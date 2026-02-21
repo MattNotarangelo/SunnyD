@@ -5,9 +5,7 @@ const entries = legendEntries(7);
 export function ColorLegend() {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-300 mb-1">
-        Minutes Required
-      </label>
+      <label className="block text-sm font-medium text-gray-300 mb-1">Minutes Required</label>
       <div className="flex items-stretch gap-2">
         <div
           className="w-4 rounded"
@@ -22,11 +20,8 @@ export function ColorLegend() {
         </div>
       </div>
       <div className="flex items-center gap-2 mt-1.5 text-xs text-gray-400">
-        <span
-          className="inline-block w-3 h-3 rounded"
-          style={{ backgroundColor: "rgb(136,136,136)" }}
-        />
-        Insufficient UV
+        <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: "rgb(120,10,10)" }} />
+        &gt;240 min / Insufficient UV
       </div>
     </div>
   );

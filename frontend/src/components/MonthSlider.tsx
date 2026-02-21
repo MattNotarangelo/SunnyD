@@ -1,7 +1,22 @@
 const MONTH_NAMES = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
+
+const LABELS = ["Jan", "Dec"];
+const LABEL_INDICES = [0, 11];
+const STOPS = 12;
+const THUMB_PX = 18;
 
 interface Props {
   month: number;
@@ -23,10 +38,18 @@ export function MonthSlider({ month, onChange }: Props) {
         onChange={(e) => onChange(Number(e.target.value))}
         className="w-full accent-amber-400"
       />
-      <div className="flex justify-between text-[10px] text-gray-500 mt-0.5">
-        <span>Jan</span>
-        <span>Jul</span>
-        <span>Dec</span>
+      <div className="relative h-4 mt-0.5">
+        {LABELS.map((label, j) => (
+          <span
+            key={label}
+            className="absolute text-[10px] text-gray-500 -translate-x-1/2"
+            style={{
+              left: `calc(${THUMB_PX / 2}px + (100% - ${THUMB_PX}px) * ${LABEL_INDICES[j] / (STOPS - 1)})`,
+            }}
+          >
+            {label}
+          </span>
+        ))}
       </div>
     </div>
   );

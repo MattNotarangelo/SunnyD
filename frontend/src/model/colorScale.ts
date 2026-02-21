@@ -1,14 +1,15 @@
 /**
  * Log-scale color mapping for minutes of sun exposure.
  *
- * Range: ~5 min (green) to ~500 min (red).  Infinity -> grey.
+ * Range: ~5 min (green) to 240 min (red).  >240 or Infinity -> grey.
  */
 
+const MAX_MINUTES = 240;
 const LOG_MIN = Math.log10(5);
-const LOG_MAX = Math.log10(500);
+const LOG_MAX = Math.log10(MAX_MINUTES);
 const LOG_RANGE = LOG_MAX - LOG_MIN;
 
-const GREY: [number, number, number, number] = [136, 136, 136, 255];
+const DARK_RED: [number, number, number, number] = [120, 10, 10, 255];
 const TRANSPARENT: [number, number, number, number] = [0, 0, 0, 0];
 
 interface ColorStop {
@@ -51,7 +52,7 @@ export function minutesToColor(
   isNoData: boolean,
 ): [number, number, number, number] {
   if (isNoData) return TRANSPARENT;
-  if (isInfinite || minutes === null) return GREY;
+  if (isInfinite || minutes === null || minutes > MAX_MINUTES) return DARK_RED;
   const t = (Math.log10(minutes) - LOG_MIN) / LOG_RANGE;
   return lerpStops(t);
 }

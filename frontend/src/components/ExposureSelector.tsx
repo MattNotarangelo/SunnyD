@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 const PRESET_LABELS: Record<string, string> = {
-  face_hands: "Face + Hands",
+  face_hands: "Winter Clothing",
   tshirt_shorts: "T-shirt + Shorts",
   swimsuit: "Swimsuit",
 };
@@ -14,16 +14,13 @@ interface Props {
 }
 
 export function ExposureSelector({ coverage, coveragePreset, presets, onChange }: Props) {
-  const [customValue, setCustomValue] = useState(
-    coveragePreset === null ? String(coverage) : "",
-  );
+  const [customValue, setCustomValue] = useState(coveragePreset === null ? String(coverage) : "");
   const isCustom = coveragePreset === null;
 
   return (
     <div>
       <label className="block text-sm font-medium text-gray-300 mb-1">
-        Skin Exposure{" "}
-        <span className="text-gray-400 text-xs">({(coverage * 100).toFixed(0)}%)</span>
+        Skin Exposure <span className="text-gray-400 text-xs">({(coverage * 100).toFixed(0)}%)</span>
       </label>
       <div className="flex flex-col gap-1.5">
         {Object.entries(presets).map(([key, val]) => (
@@ -40,6 +37,13 @@ export function ExposureSelector({ coverage, coveragePreset, presets, onChange }
             <span className="float-right text-xs opacity-70">{val}</span>
           </button>
         ))}
+        <button
+          disabled
+          className="w-full py-1.5 px-3 rounded text-sm text-left bg-gray-700 text-gray-500 opacity-50 cursor-not-allowed"
+        >
+          Weather Adjusted
+          <span className="float-right text-xs opacity-70">coming soon</span>
+        </button>
         <div className="flex items-center gap-2">
           <button
             onClick={() => {
@@ -47,9 +51,7 @@ export function ExposureSelector({ coverage, coveragePreset, presets, onChange }
               onChange(Math.max(0, Math.min(1, v)), null);
             }}
             className={`py-1.5 px-3 rounded text-sm transition-colors ${
-              isCustom
-                ? "bg-amber-500 text-gray-900 font-medium"
-                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+              isCustom ? "bg-amber-500 text-gray-900 font-medium" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
             }`}
           >
             Custom
