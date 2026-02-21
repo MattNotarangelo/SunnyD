@@ -6,7 +6,7 @@ MODEL_VERSION = "1.0.0"
 
 T_WINDOW: int = 120  # minutes of midday sun window
 C_IU: float = 0.10  # IU per (J/m²)
-H_MIN: float = 50.0  # J/m²/day; below this → infinite minutes
+H_MIN: float = 200.0  # J/m²/day; below this → infinite minutes
 
 # --- Fitzpatrick skin-type multipliers ---
 
