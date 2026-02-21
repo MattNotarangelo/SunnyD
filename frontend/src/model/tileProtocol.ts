@@ -2,6 +2,7 @@ import { addProtocol } from "maplibre-gl";
 import type { ModelParams } from "../types";
 import { minutesToColor } from "./colorScale";
 import { computeMinutes, decodeRGB } from "./vitd";
+import { weatherExposure } from "./weather";
 
 const TILE_SIZE = 256;
 const rawCache = new Map<string, Float32Array>();
@@ -51,11 +52,25 @@ async function fetchAndDecode(
   return hd;
 }
 
-async function colorize(hd: Float32Array, params: ModelParams): Promise<Blob> {
+function tileToLatBounds(z: number, y: number): { latMax: number; latMin: number } {
+  const n = 2 ** z;
+  const latMax = Math.atan(Math.sinh(Math.PI * (1 - (2 * y) / n))) * (180 / Math.PI);
+  const latMin = Math.atan(Math.sinh(Math.PI * (1 - (2 * (y + 1)) / n))) * (180 / Math.PI);
+  return { latMax, latMin };
+}
+
+async function colorize(
+  hd: Float32Array,
+  params: ModelParams,
+  z: number,
+  y: number,
+): Promise<Blob> {
   const canvas = new OffscreenCanvas(TILE_SIZE, TILE_SIZE);
   const ctx = canvas.getContext("2d")!;
   const imageData = ctx.createImageData(TILE_SIZE, TILE_SIZE);
   const out = imageData.data;
+
+  const { latMax, latMin } = tileToLatBounds(z, y);
 
   for (let i = 0; i < hd.length; i++) {
     const val = hd[i];
@@ -64,12 +79,13 @@ async function colorize(hd: Float32Array, params: ModelParams): Promise<Blob> {
     let isInfinite = false;
 
     if (!isNoData) {
-      const result = computeMinutes(
-        val,
-        params.kSkin,
-        params.fCover,
-        params.kMinutes,
-      );
+      let fCover = params.fCover;
+      if (params.weatherAdjusted) {
+        const row = Math.floor(i / TILE_SIZE);
+        const lat = latMax - (row / (TILE_SIZE - 1)) * (latMax - latMin);
+        fCover = weatherExposure(lat, params.month);
+      }
+      const result = computeMinutes(val, params.kSkin, fCover, params.kMinutes);
       minutes = result.minutes;
       isInfinite = result.isInfinite;
     }
@@ -109,7 +125,7 @@ export function registerProtocol() {
     }
 
     const hd = await fetchAndDecode(month, z, x, y, currentParams.encodingScale);
-    const blob = await colorize(hd, currentParams);
+    const blob = await colorize(hd, currentParams, z, y);
     const arrayBuffer = await blob.arrayBuffer();
     return { data: arrayBuffer };
   });

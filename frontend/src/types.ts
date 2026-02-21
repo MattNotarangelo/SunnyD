@@ -48,4 +48,6 @@ export interface ModelParams {
   kSkin: number;
   kMinutes: number;
   encodingScale: number;
+  weatherAdjusted: boolean;
+  month: number;
 }

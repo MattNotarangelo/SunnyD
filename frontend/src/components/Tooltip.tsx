@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { fetchEstimate } from "../api/estimate";
 import type { EstimateResponse, ModelParams } from "../types";
 import { computeMinutes } from "../model/vitd";
+import { weatherExposure } from "../model/weather";
 
 interface Props {
   lat: number;
@@ -24,6 +25,10 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
   const [serverResult, setServerResult] = useState<EstimateResponse | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const effectiveCover = modelParams.weatherAdjusted
+    ? weatherExposure(lat, month)
+    : modelParams.fCover;
+
   useEffect(() => {
     setLoading(true);
     setServerResult(null);
@@ -37,12 +42,12 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
         }
         return 2;
       })(),
-      coverage: modelParams.fCover,
+      coverage: effectiveCover,
     })
       .then(setServerResult)
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [lat, lon, month, modelParams]);
+  }, [lat, lon, month, modelParams, effectiveCover]);
 
   const r = serverResult;
   const localFromServer =
@@ -50,7 +55,7 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
     computeMinutes(
       r.intermediate.H_D_month,
       modelParams.kSkin,
-      modelParams.fCover,
+      effectiveCover,
       modelParams.kMinutes,
     );
 

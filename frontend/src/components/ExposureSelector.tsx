@@ -20,7 +20,10 @@ export function ExposureSelector({ coverage, coveragePreset, presets, onChange }
   return (
     <div>
       <label className="block text-sm font-medium text-gray-300 mb-1">
-        Skin Exposure <span className="text-gray-400 text-xs">({(coverage * 100).toFixed(0)}%)</span>
+        Skin Exposure{" "}
+        {coveragePreset !== "weather_adjusted" && (
+          <span className="text-gray-400 text-xs">({(coverage * 100).toFixed(0)}%)</span>
+        )}
       </label>
       <div className="flex flex-col gap-1.5">
         {Object.entries(presets).map(([key, val]) => (
@@ -38,11 +41,15 @@ export function ExposureSelector({ coverage, coveragePreset, presets, onChange }
           </button>
         ))}
         <button
-          disabled
-          className="w-full py-1.5 px-3 rounded text-sm text-left bg-gray-700 text-gray-500 opacity-50 cursor-not-allowed"
+          onClick={() => onChange(0.25, "weather_adjusted")}
+          className={`w-full py-1.5 px-3 rounded text-sm text-left transition-colors ${
+            coveragePreset === "weather_adjusted"
+              ? "bg-amber-500 text-gray-900 font-medium"
+              : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+          }`}
         >
           Weather Adjusted
-          <span className="float-right text-xs opacity-70">coming soon</span>
+          <span className="float-right text-xs opacity-70">auto</span>
         </button>
         <div className="flex items-center gap-2">
           <button

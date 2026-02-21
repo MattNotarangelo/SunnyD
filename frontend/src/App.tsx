@@ -23,8 +23,10 @@ export default function App() {
       kSkin: methodology.fitzpatrick_table[String(state.skinType)] ?? 1,
       kMinutes: methodology.constants.K_minutes,
       encodingScale: methodology.encoding.scale,
+      weatherAdjusted: state.coveragePreset === "weather_adjusted",
+      month: state.month,
     };
-  }, [methodology, state.coverage, state.skinType]);
+  }, [methodology, state.month, state.coverage, state.coveragePreset, state.skinType]);
 
   if (error) {
     return (
