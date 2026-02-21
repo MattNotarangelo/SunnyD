@@ -6,7 +6,6 @@ const STORAGE_KEY = "sunnyd_state";
 const DEFAULTS: AppState = {
   month: 7,
   skinType: 2,
-  iu: 1000,
   coverage: 0.25,
   coveragePreset: "tshirt_shorts",
 };
@@ -16,7 +15,6 @@ function readURL(): Partial<AppState> {
   const result: Partial<AppState> = {};
   if (p.has("month")) result.month = Number(p.get("month"));
   if (p.has("skin")) result.skinType = Number(p.get("skin"));
-  if (p.has("iu")) result.iu = Number(p.get("iu"));
   if (p.has("cov")) result.coverage = Number(p.get("cov"));
   if (p.has("preset")) result.coveragePreset = p.get("preset");
   return result;
@@ -36,7 +34,6 @@ function writeURL(state: AppState) {
   const p = new URLSearchParams();
   p.set("month", String(state.month));
   p.set("skin", String(state.skinType));
-  p.set("iu", String(state.iu));
   p.set("cov", String(state.coverage));
   if (state.coveragePreset) p.set("preset", state.coveragePreset);
   window.history.replaceState(null, "", `?${p.toString()}`);
@@ -76,7 +73,6 @@ export function useAppState() {
     ...state,
     setMonth: (month: number) => update({ month }),
     setSkinType: (skinType: number) => update({ skinType }),
-    setIU: (iu: number) => update({ iu }),
     setCoverage: (coverage: number, coveragePreset: string | null) =>
       update({ coverage, coveragePreset }),
   };

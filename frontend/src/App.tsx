@@ -19,15 +19,12 @@ export default function App() {
   const modelParams: ModelParams | null = useMemo(() => {
     if (!methodology) return null;
     return {
-      iuTarget: state.iu,
       fCover: state.coverage,
       kSkin: methodology.fitzpatrick_table[String(state.skinType)] ?? 1,
-      tWindow: methodology.constants.T_window,
-      cIU: methodology.constants.C_IU,
-      hMin: methodology.constants.H_min,
+      kMinutes: methodology.constants.K_minutes,
       encodingScale: methodology.encoding.scale,
     };
-  }, [methodology, state.iu, state.coverage, state.skinType]);
+  }, [methodology, state.coverage, state.skinType]);
 
   if (error) {
     return (
@@ -60,12 +57,10 @@ export default function App() {
         methodology={methodology}
         month={state.month}
         skinType={state.skinType}
-        iu={state.iu}
         coverage={state.coverage}
         coveragePreset={state.coveragePreset}
         setMonth={state.setMonth}
         setSkinType={state.setSkinType}
-        setIU={state.setIU}
         setCoverage={state.setCoverage}
       />
       <MapView

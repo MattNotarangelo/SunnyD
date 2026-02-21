@@ -34,7 +34,7 @@ class TestEstimateEndpoint:
     def test_basic_estimate(self, client: TestClient) -> None:
         resp = client.get(
             "/api/estimate",
-            params={"lat": 0, "lon": 0, "month": 7, "skin_type": 2, "iu": 1000, "coverage": 0.25},
+            params={"lat": 0, "lon": 0, "month": 7, "skin_type": 2, "coverage": 0.25},
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -63,7 +63,7 @@ class TestEstimateEndpoint:
     def test_high_latitude_winter_infinite(self, client: TestClient) -> None:
         resp = client.get(
             "/api/estimate",
-            params={"lat": 89, "lon": 0, "month": 12, "skin_type": 6, "iu": 2000, "coverage": 0.05},
+            params={"lat": 89, "lon": 0, "month": 12, "skin_type": 6, "coverage": 0.05},
         )
         assert resp.status_code == 200
         body = resp.json()

@@ -25,7 +25,6 @@ def estimate(
     lon: float = Query(...),
     month: int = Query(..., ge=1, le=12),
     skin_type: int = Query(..., ge=1, le=6),
-    iu: float = Query(1000, gt=0),
     coverage: float | None = Query(None, ge=0, le=1),
     coverage_preset: str | None = Query(None),
 ) -> EstimateResponse:
@@ -49,14 +48,13 @@ def estimate(
     if math.isnan(h_d_month):
         h_d_month = 0.0
 
-    result = compute_estimate(h_d_month, iu, f_cover, skin_type)
+    result = compute_estimate(h_d_month, f_cover, skin_type)
 
     inputs = EstimateInputs(
         lat=lat,
         lon=norm_lon,
         month=month,
         skin_type=skin_type,
-        iu_target=iu,
         coverage=f_cover,
     )
 

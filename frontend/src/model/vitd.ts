@@ -1,29 +1,20 @@
 export interface VitDResult {
   hDMonth: number;
-  hdotD: number;
-  iuPerMinRef: number;
-  iuPerMinUser: number;
   minutes: number | null;
   isInfinite: boolean;
 }
 
 export function computeMinutes(
   hDMonth: number,
-  iuTarget: number,
-  fCover: number,
   kSkin: number,
-  tWindow: number,
-  cIU: number,
-  hMin: number,
+  fCover: number,
+  kMinutes: number,
 ): VitDResult {
-  const hdotD = hDMonth / tWindow;
-  const iuPerMinRef = cIU * hdotD;
-  const iuPerMinUser = (iuPerMinRef * fCover) / kSkin;
+  const isInfinite = hDMonth <= 0 || fCover <= 0;
+  const hdKj = hDMonth / 1000;
+  const minutes = isInfinite ? null : (kMinutes * kSkin) / (hdKj * fCover);
 
-  const isInfinite = hDMonth < hMin || iuPerMinUser <= 0;
-  const minutes = isInfinite ? null : iuTarget / iuPerMinUser;
-
-  return { hDMonth, hdotD, iuPerMinRef, iuPerMinUser, minutes, isInfinite };
+  return { hDMonth, minutes, isInfinite };
 }
 
 export function decodeRGB(

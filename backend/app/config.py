@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-MODEL_VERSION = "1.0.0"
+MODEL_VERSION = "2.0.0"
 
 # --- Model constants ---
 
-T_WINDOW: int = 120  # minutes of midday sun window
-C_IU: float = 0.10  # IU per (J/m²)
-H_MIN: float = 200.0  # J/m²/day; below this → infinite minutes
+K_MINUTES: float = 20.2  # dose-time constant (minutes · J/m² per skin-unit)
 
 # --- Fitzpatrick skin-type multipliers ---
 

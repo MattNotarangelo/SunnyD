@@ -66,12 +66,9 @@ async function colorize(hd: Float32Array, params: ModelParams): Promise<Blob> {
     if (!isNoData) {
       const result = computeMinutes(
         val,
-        params.iuTarget,
-        params.fCover,
         params.kSkin,
-        params.tWindow,
-        params.cIU,
-        params.hMin,
+        params.fCover,
+        params.kMinutes,
       );
       minutes = result.minutes;
       isInfinite = result.isInfinite;

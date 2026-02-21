@@ -11,15 +11,11 @@ class EstimateInputs(BaseModel):
     lon: float
     month: int
     skin_type: int
-    iu_target: float
     coverage: float
 
 
 class EstimateIntermediate(BaseModel):
-    H_D_month: float = Field(description="Monthly mean daily dose (J/m²/day)")
-    Hdot_D: float = Field(description="Per-minute effective rate (J/m²/min)")
-    IU_per_min_ref: float = Field(description="Reference IU per minute")
-    IU_per_min_user: float = Field(description="User-adjusted IU per minute")
+    H_D_month: float = Field(description="Monthly mean daily erythemal dose (J/m²/day)")
 
 
 class EstimateOutputs(BaseModel):
@@ -30,9 +26,7 @@ class EstimateOutputs(BaseModel):
 
 
 class ConstantsUsed(BaseModel):
-    T_window: int
-    C_IU: float
-    H_min: float
+    K_minutes: float
     k_skin: float
     f_cover: float
 

@@ -37,7 +37,6 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
         }
         return 2;
       })(),
-      iu: modelParams.iuTarget,
       coverage: modelParams.fCover,
     })
       .then(setServerResult)
@@ -50,12 +49,9 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
     r &&
     computeMinutes(
       r.intermediate.H_D_month,
-      modelParams.iuTarget,
-      modelParams.fCover,
       modelParams.kSkin,
-      modelParams.tWindow,
-      modelParams.cIU,
-      modelParams.hMin,
+      modelParams.fCover,
+      modelParams.kMinutes,
     );
 
   return (
@@ -80,18 +76,6 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
           <Row
             label="H_D_month"
             value={r.intermediate.H_D_month.toFixed(1) + " J/m\u00b2/day"}
-          />
-          <Row
-            label="Hdot_D"
-            value={r.intermediate.Hdot_D.toFixed(3) + " J/m\u00b2/min"}
-          />
-          <Row
-            label="IU/min (ref)"
-            value={r.intermediate.IU_per_min_ref.toFixed(4)}
-          />
-          <Row
-            label="IU/min (user)"
-            value={r.intermediate.IU_per_min_user.toFixed(4)}
           />
           <div className="mt-2 border-t border-gray-700 pt-2">
             {r.outputs.is_infinite ? (

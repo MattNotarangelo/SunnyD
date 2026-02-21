@@ -2,7 +2,6 @@ import type { MethodologyResponse } from "../types";
 import { ColorLegend } from "./ColorLegend";
 import { Disclaimer } from "./Disclaimer";
 import { ExposureSelector } from "./ExposureSelector";
-import { IUSelector } from "./IUSelector";
 import { MonthSlider } from "./MonthSlider";
 import { SkinTypeSelector } from "./SkinTypeSelector";
 
@@ -10,12 +9,10 @@ interface Props {
   methodology: MethodologyResponse;
   month: number;
   skinType: number;
-  iu: number;
   coverage: number;
   coveragePreset: string | null;
   setMonth: (m: number) => void;
   setSkinType: (s: number) => void;
-  setIU: (iu: number) => void;
   setCoverage: (cov: number, preset: string | null) => void;
 }
 
@@ -23,12 +20,10 @@ export function ControlPanel({
   methodology,
   month,
   skinType,
-  iu,
   coverage,
   coveragePreset,
   setMonth,
   setSkinType,
-  setIU,
   setCoverage,
 }: Props) {
   return (
@@ -47,7 +42,6 @@ export function ControlPanel({
           fitzpatrick={methodology.fitzpatrick_table}
           onChange={setSkinType}
         />
-        <IUSelector iu={iu} onChange={setIU} />
         <ExposureSelector
           coverage={coverage}
           coveragePreset={coveragePreset}

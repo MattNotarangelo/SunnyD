@@ -5,7 +5,6 @@ export async function fetchEstimate(params: {
   lon: number;
   month: number;
   skinType: number;
-  iu: number;
   coverage: number;
 }): Promise<EstimateResponse> {
   const qs = new URLSearchParams({
@@ -13,7 +12,6 @@ export async function fetchEstimate(params: {
     lon: String(params.lon),
     month: String(params.month),
     skin_type: String(params.skinType),
-    iu: String(params.iu),
     coverage: String(params.coverage),
   });
   const resp = await fetch(`/api/estimate?${qs}`);
