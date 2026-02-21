@@ -1,0 +1,24 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./uvdvcclim_world_monthly.nc:/data/uvdvcclim_world_monthly.nc:ro
+      - backend-cache:/cache
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SUNNYD_DATA_DIR=/data
+      - SUNNYD_CACHE_DIR=/cache
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  backend-cache:

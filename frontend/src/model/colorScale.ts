@@ -1,0 +1,70 @@
+/**
+ * Log-scale color mapping for minutes of sun exposure.
+ *
+ * Range: ~5 min (green) to ~500 min (red).  Infinity -> grey.
+ */
+
+const LOG_MIN = Math.log10(5);
+const LOG_MAX = Math.log10(500);
+const LOG_RANGE = LOG_MAX - LOG_MIN;
+
+const GREY: [number, number, number, number] = [136, 136, 136, 255];
+const TRANSPARENT: [number, number, number, number] = [0, 0, 0, 0];
+
+interface ColorStop {
+  t: number;
+  r: number;
+  g: number;
+  b: number;
+}
+
+const STOPS: ColorStop[] = [
+  { t: 0.0, r: 34, g: 139, b: 34 },   // forest green  — few minutes
+  { t: 0.25, r: 50, g: 205, b: 50 },   // lime green
+  { t: 0.5, r: 255, g: 215, b: 0 },    // gold/yellow
+  { t: 0.75, r: 255, g: 120, b: 0 },   // orange
+  { t: 1.0, r: 200, g: 30, b: 30 },    // red           — many minutes
+];
+
+function lerpStops(t: number): [number, number, number, number] {
+  const clamped = Math.max(0, Math.min(1, t));
+  for (let i = 1; i < STOPS.length; i++) {
+    if (clamped <= STOPS[i].t) {
+      const prev = STOPS[i - 1];
+      const next = STOPS[i];
+      const local = (clamped - prev.t) / (next.t - prev.t);
+      return [
+        Math.round(prev.r + (next.r - prev.r) * local),
+        Math.round(prev.g + (next.g - prev.g) * local),
+        Math.round(prev.b + (next.b - prev.b) * local),
+        255,
+      ];
+    }
+  }
+  const last = STOPS[STOPS.length - 1];
+  return [last.r, last.g, last.b, 255];
+}
+
+export function minutesToColor(
+  minutes: number | null,
+  isInfinite: boolean,
+  isNoData: boolean,
+): [number, number, number, number] {
+  if (isNoData) return TRANSPARENT;
+  if (isInfinite || minutes === null) return GREY;
+  const t = (Math.log10(minutes) - LOG_MIN) / LOG_RANGE;
+  return lerpStops(t);
+}
+
+/** Generate a legend with N evenly-spaced entries. */
+export function legendEntries(n: number): { minutes: number; color: string }[] {
+  const entries: { minutes: number; color: string }[] = [];
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);
+    const logVal = LOG_MIN + t * LOG_RANGE;
+    const mins = Math.pow(10, logVal);
+    const [r, g, b] = lerpStops(t);
+    entries.push({ minutes: mins, color: `rgb(${r},${g},${b})` });
+  }
+  return entries;
+}
