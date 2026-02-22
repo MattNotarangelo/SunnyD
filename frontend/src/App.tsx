@@ -25,6 +25,8 @@ export default function App() {
       encodingScale: methodology.encoding.scale,
       weatherAdjusted: state.coveragePreset === "weather_adjusted",
       month: state.month,
+      tempEncodingScale: methodology.encoding.temp_encoding_scale,
+      tempOffset: methodology.encoding.temp_offset,
     };
   }, [methodology, state.month, state.coverage, state.coveragePreset, state.skinType]);
 

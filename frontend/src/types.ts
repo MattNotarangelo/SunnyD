@@ -9,6 +9,8 @@ export interface MethodologyResponse {
   encoding: {
     scale: number;
     H_D_max: number;
+    temp_encoding_scale: number;
+    temp_offset: number;
   };
   disclaimer: string;
 }
@@ -23,6 +25,7 @@ export interface EstimateResponse {
   };
   intermediate: {
     H_D_month: number;
+    temperature: number | null;
   };
   outputs: {
     minutes_required: number | null;
@@ -50,4 +53,6 @@ export interface ModelParams {
   encodingScale: number;
   weatherAdjusted: boolean;
   month: number;
+  tempEncodingScale: number;
+  tempOffset: number;
 }

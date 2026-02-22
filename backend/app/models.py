@@ -16,6 +16,10 @@ class EstimateInputs(BaseModel):
 
 class EstimateIntermediate(BaseModel):
     H_D_month: float = Field(description="Monthly mean daily erythemal dose (J/m²/day)")
+    temperature: float | None = Field(
+        default=None,
+        description="Monthly mean temperature at this location (°C), if available",
+    )
 
 
 class EstimateOutputs(BaseModel):

@@ -12,11 +12,17 @@ from ..services.vitd_model import compute_estimate
 router = APIRouter(prefix="/api", tags=["estimate"])
 
 _provider: ProviderBase | None = None
+_temp_provider: ProviderBase | None = None
 
 
 def init_provider(provider: ProviderBase) -> None:
     global _provider  # noqa: PLW0603
     _provider = provider
+
+
+def init_temp_provider(provider: ProviderBase) -> None:
+    global _temp_provider  # noqa: PLW0603
+    _temp_provider = provider
 
 
 @router.get("/estimate", response_model=EstimateResponse)
@@ -48,6 +54,13 @@ def estimate(
     if math.isnan(h_d_month):
         h_d_month = 0.0
 
+    # Temperature lookup (optional — only available when temp dataset is loaded)
+    temperature: float | None = None
+    if _temp_provider is not None:
+        temp_val = _temp_provider.get_monthly_dose(month, lat, norm_lon)
+        if not math.isnan(temp_val):
+            temperature = round(temp_val, 1)
+
     result = compute_estimate(h_d_month, f_cover, skin_type)
 
     inputs = EstimateInputs(
@@ -60,7 +73,7 @@ def estimate(
 
     return EstimateResponse(
         inputs=inputs,
-        intermediate=result["intermediate"],
+        intermediate={**result["intermediate"], "temperature": temperature},
         outputs=result["outputs"],
         constants_used=result["constants_used"],
         model_version=MODEL_VERSION,

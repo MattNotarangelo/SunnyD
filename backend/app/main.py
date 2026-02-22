@@ -9,9 +9,16 @@ from typing import AsyncIterator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .config import MODEL_VERSION, NETCDF_FILENAME
+from .config import (
+    MODEL_VERSION,
+    NETCDF_FILENAME,
+    TEMP_ENCODING_SCALE,
+    TEMP_NETCDF_FILENAME,
+    TEMP_OFFSET,
+)
 from .routers import estimate, health, methodology, tiles
 from .services.provider_temis import ProviderTEMIS
+from .services.provider_temperature import ProviderTemperature
 from .services.tile_service import TileService
 
 logging.basicConfig(
@@ -27,6 +34,7 @@ CACHE_DIR = Path(os.environ.get("SUNNYD_CACHE_DIR", str(_backend_dir / "data_cac
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    # UV data
     nc_path = DATA_DIR / NETCDF_FILENAME
     if not nc_path.exists():
         raise FileNotFoundError(
@@ -35,8 +43,28 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         )
     provider = ProviderTEMIS(nc_path)
     estimate.init_provider(provider)
-    tile_svc = TileService(provider, CACHE_DIR)
+    tile_svc = TileService(provider, CACHE_DIR / "uv")
     tiles.init_tile_service(tile_svc)
+
+    # Temperature data
+    temp_path = DATA_DIR / TEMP_NETCDF_FILENAME
+    if not temp_path.exists():
+        log.warning(
+            "Temperature NetCDF not found at %s — weather-adjusted mode will be unavailable. "
+            "Run scripts/build_temperature_nc.py to generate it.",
+            temp_path,
+        )
+    else:
+        temp_provider = ProviderTemperature(temp_path)
+        estimate.init_temp_provider(temp_provider)
+        temp_tile_svc = TileService(
+            temp_provider,
+            CACHE_DIR / "temp",
+            encoding_scale=TEMP_ENCODING_SCALE,
+            encoding_offset=TEMP_OFFSET,
+        )
+        tiles.init_temp_tile_service(temp_tile_svc)
+
     log.info("SunnyD backend v%s ready", MODEL_VERSION)
     yield
 

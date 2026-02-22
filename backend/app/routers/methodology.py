@@ -10,6 +10,8 @@ from ..config import (
     H_D_MAX,
     K_MINUTES,
     MODEL_VERSION,
+    TEMP_ENCODING_SCALE,
+    TEMP_OFFSET,
 )
 from ..models import MethodologyResponse
 
@@ -34,6 +36,8 @@ def methodology() -> MethodologyResponse:
         encoding={
             "scale": ENCODING_SCALE,
             "H_D_max": H_D_MAX,
+            "temp_encoding_scale": TEMP_ENCODING_SCALE,
+            "temp_offset": TEMP_OFFSET,
         },
         disclaimer=DISCLAIMER,
     )

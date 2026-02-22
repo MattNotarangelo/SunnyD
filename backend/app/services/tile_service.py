@@ -12,6 +12,8 @@ from PIL import Image
 from ..config import ENCODING_SCALE, MODEL_VERSION, TILE_SIZE
 from .provider_base import ProviderBase
 
+DEFAULT_OFFSET = 0.0
+
 log = logging.getLogger(__name__)
 
 # Web Mercator bounds (latitude clamped to ~±85.051°)
@@ -28,11 +30,15 @@ def tile_to_bbox(z: int, x: int, y: int) -> tuple[float, float, float, float]:
     return lat_min, lat_max, lon_min, lon_max
 
 
-def encode_rgb(data: NDArray[np.float32]) -> NDArray[np.uint8]:
-    """Encode a float32 (H, W) array of J/m²/day into an (H, W, 4) RGBA image.
+def encode_rgb(
+    data: NDArray[np.float32],
+    scale: int = ENCODING_SCALE,
+    offset: float = DEFAULT_OFFSET,
+) -> NDArray[np.uint8]:
+    """Encode a float32 (H, W) array into an (H, W, 4) RGBA image.
 
     Encoding:
-        value_encoded = round(H_D_month * ENCODING_SCALE)
+        value_encoded = round((value + offset) * scale)
         R = (value_encoded >> 16) & 0xFF
         G = (value_encoded >> 8)  & 0xFF
         B =  value_encoded        & 0xFF
@@ -42,7 +48,7 @@ def encode_rgb(data: NDArray[np.float32]) -> NDArray[np.uint8]:
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
 
     valid = ~np.isnan(data)
-    vals = np.clip(data[valid] * ENCODING_SCALE, 0, 0xFFFFFF).astype(np.uint32)
+    vals = np.clip((data[valid] + offset) * scale, 0, 0xFFFFFF).astype(np.uint32)
 
     rgba[valid, 0] = ((vals >> 16) & 0xFF).astype(np.uint8)
     rgba[valid, 1] = ((vals >> 8) & 0xFF).astype(np.uint8)
@@ -69,8 +75,16 @@ def decode_rgb(rgba: NDArray[np.uint8]) -> NDArray[np.float32]:
 class TileService:
     """Generates and caches numeric base tiles."""
 
-    def __init__(self, provider: ProviderBase, cache_dir: Path) -> None:
+    def __init__(
+        self,
+        provider: ProviderBase,
+        cache_dir: Path,
+        encoding_scale: int = ENCODING_SCALE,
+        encoding_offset: float = DEFAULT_OFFSET,
+    ) -> None:
         self._provider = provider
+        self._encoding_scale = encoding_scale
+        self._encoding_offset = encoding_offset
         self._cache_root = cache_dir / MODEL_VERSION
         self._cache_root.mkdir(parents=True, exist_ok=True)
         log.info("Tile cache directory: %s", self._cache_root)
@@ -88,7 +102,7 @@ class TileService:
         data = self._provider.get_tile_data(
             month, lat_min, lat_max, lon_min, lon_max, TILE_SIZE, TILE_SIZE
         )
-        rgba = encode_rgb(data)
+        rgba = encode_rgb(data, self._encoding_scale, self._encoding_offset)
 
         img = Image.fromarray(rgba)
         buf = io.BytesIO()

@@ -5,7 +5,8 @@ import { computeMinutes, decodeRGB } from "./vitd";
 import { weatherExposure } from "./weather";
 
 const TILE_SIZE = 256;
-const rawCache = new Map<string, Float32Array>();
+const uvCache = new Map<string, Float32Array>();
+const tempCache = new Map<string, Float32Array>();
 
 let currentParams: ModelParams | null = null;
 
@@ -17,18 +18,11 @@ function cacheKey(month: number, z: number, x: number, y: number): string {
   return `${month}/${z}/${x}/${y}`;
 }
 
-async function fetchAndDecode(
-  month: number,
-  z: number,
-  x: number,
-  y: number,
+async function decodeTilePng(
+  url: string,
   encodingScale: number,
+  encodingOffset: number,
 ): Promise<Float32Array> {
-  const key = cacheKey(month, z, x, y);
-  const cached = rawCache.get(key);
-  if (cached) return cached;
-
-  const url = `/api/base_tiles/${z}/${x}/${y}.png?month=${month}`;
   const resp = await fetch(url);
   if (!resp.ok) throw new Error(`Tile fetch failed: ${resp.status}`);
 
@@ -42,35 +36,59 @@ async function fetchAndDecode(
   const pixels = imageData.data;
 
   const count = TILE_SIZE * TILE_SIZE;
-  const hd = new Float32Array(count);
+  const values = new Float32Array(count);
   for (let i = 0; i < count; i++) {
     const off = i * 4;
-    hd[i] = decodeRGB(pixels[off], pixels[off + 1], pixels[off + 2], pixels[off + 3], encodingScale);
+    const raw = decodeRGB(pixels[off], pixels[off + 1], pixels[off + 2], pixels[off + 3], encodingScale);
+    values[i] = isNaN(raw) ? NaN : raw - encodingOffset;
   }
+  return values;
+}
 
-  rawCache.set(key, hd);
+async function fetchUV(
+  month: number,
+  z: number,
+  x: number,
+  y: number,
+  encodingScale: number,
+): Promise<Float32Array> {
+  const key = cacheKey(month, z, x, y);
+  const cached = uvCache.get(key);
+  if (cached) return cached;
+
+  const url = `/api/base_tiles/${z}/${x}/${y}.png?month=${month}`;
+  const hd = await decodeTilePng(url, encodingScale, 0);
+  uvCache.set(key, hd);
   return hd;
 }
 
-function tileToLatBounds(z: number, y: number): { latMax: number; latMin: number } {
-  const n = 2 ** z;
-  const latMax = Math.atan(Math.sinh(Math.PI * (1 - (2 * y) / n))) * (180 / Math.PI);
-  const latMin = Math.atan(Math.sinh(Math.PI * (1 - (2 * (y + 1)) / n))) * (180 / Math.PI);
-  return { latMax, latMin };
+async function fetchTemp(
+  month: number,
+  z: number,
+  x: number,
+  y: number,
+  encodingScale: number,
+  encodingOffset: number,
+): Promise<Float32Array> {
+  const key = cacheKey(month, z, x, y);
+  const cached = tempCache.get(key);
+  if (cached) return cached;
+
+  const url = `/api/temp_tiles/${z}/${x}/${y}.png?month=${month}`;
+  const temps = await decodeTilePng(url, encodingScale, encodingOffset);
+  tempCache.set(key, temps);
+  return temps;
 }
 
 async function colorize(
   hd: Float32Array,
+  temps: Float32Array | null,
   params: ModelParams,
-  z: number,
-  y: number,
 ): Promise<Blob> {
   const canvas = new OffscreenCanvas(TILE_SIZE, TILE_SIZE);
   const ctx = canvas.getContext("2d")!;
   const imageData = ctx.createImageData(TILE_SIZE, TILE_SIZE);
   const out = imageData.data;
-
-  const { latMax, latMin } = tileToLatBounds(z, y);
 
   for (let i = 0; i < hd.length; i++) {
     const val = hd[i];
@@ -80,10 +98,11 @@ async function colorize(
 
     if (!isNoData) {
       let fCover = params.fCover;
-      if (params.weatherAdjusted) {
-        const row = Math.floor(i / TILE_SIZE);
-        const lat = latMax - (row / (TILE_SIZE - 1)) * (latMax - latMin);
-        fCover = weatherExposure(lat, params.month);
+      if (params.weatherAdjusted && temps) {
+        const tempC = temps[i];
+        if (!isNaN(tempC)) {
+          fCover = weatherExposure(tempC);
+        }
       }
       const result = computeMinutes(val, params.kSkin, fCover, params.kMinutes);
       minutes = result.minutes;
@@ -124,13 +143,24 @@ export function registerProtocol() {
       throw new Error("Model params not yet initialized");
     }
 
-    const hd = await fetchAndDecode(month, z, x, y, currentParams.encodingScale);
-    const blob = await colorize(hd, currentParams, z, y);
+    const hd = await fetchUV(month, z, x, y, currentParams.encodingScale);
+
+    let temps: Float32Array | null = null;
+    if (currentParams.weatherAdjusted) {
+      temps = await fetchTemp(
+        month, z, x, y,
+        currentParams.tempEncodingScale,
+        currentParams.tempOffset,
+      );
+    }
+
+    const blob = await colorize(hd, temps, currentParams);
     const arrayBuffer = await blob.arrayBuffer();
     return { data: arrayBuffer };
   });
 }
 
 export function clearCache() {
-  rawCache.clear();
+  uvCache.clear();
+  tempCache.clear();
 }

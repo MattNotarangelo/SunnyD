@@ -25,8 +25,10 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
   const [serverResult, setServerResult] = useState<EstimateResponse | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const effectiveCover = modelParams.weatherAdjusted
-    ? weatherExposure(lat, month)
+  const serverTemp = serverResult?.intermediate.temperature ?? null;
+
+  const effectiveCover = modelParams.weatherAdjusted && serverTemp !== null
+    ? weatherExposure(serverTemp)
     : modelParams.fCover;
 
   useEffect(() => {
@@ -47,7 +49,8 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
       .then(setServerResult)
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [lat, lon, month, modelParams, effectiveCover]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lat, lon, month, modelParams.kSkin, modelParams.fCover, modelParams.weatherAdjusted]);
 
   const r = serverResult;
   const localFromServer =
@@ -71,8 +74,8 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
         </button>
       </div>
 
-      <Row label="Latitude" value={lat.toFixed(3) + "°"} />
-      <Row label="Longitude" value={lon.toFixed(3) + "°"} />
+      <Row label="Latitude" value={lat.toFixed(3) + "\u00b0"} />
+      <Row label="Longitude" value={lon.toFixed(3) + "\u00b0"} />
 
       {loading && <p className="text-xs text-gray-500 mt-2">Loading...</p>}
 
@@ -82,6 +85,18 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
             label="H_D_month"
             value={r.intermediate.H_D_month.toFixed(1) + " J/m\u00b2/day"}
           />
+          {r.intermediate.temperature !== null && (
+            <Row
+              label="Temperature"
+              value={r.intermediate.temperature.toFixed(1) + " \u00b0C"}
+            />
+          )}
+          {modelParams.weatherAdjusted && r.intermediate.temperature !== null && (
+            <Row
+              label="Weather exposure"
+              value={(effectiveCover * 100).toFixed(0) + "%"}
+            />
+          )}
           <div className="mt-2 border-t border-gray-700 pt-2">
             {r.outputs.is_infinite ? (
               <p className="text-sm text-gray-400 font-semibold">
@@ -90,7 +105,7 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
             ) : (
               <Row
                 label="Minutes required"
-                value={r.outputs.minutes_required?.toFixed(1) + " min" || "—"}
+                value={r.outputs.minutes_required?.toFixed(1) + " min" || "\u2014"}
               />
             )}
           </div>
@@ -98,7 +113,7 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
             <div className="text-[10px] text-gray-600 mt-1">
               Client check: {localFromServer.minutes?.toFixed(1)} min
               {Math.abs((localFromServer.minutes! - r.outputs.minutes_required) / r.outputs.minutes_required) < 0.01
-                ? " ✓"
+                ? " \u2713"
                 : " (mismatch)"}
             </div>
           )}
