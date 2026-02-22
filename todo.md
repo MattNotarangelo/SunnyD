@@ -5,15 +5,15 @@
 [X] set to 1000 IU default
 [x] mobile optimised
 [ ] hosting
-[ ] description and disclaimers
+[X] description and disclaimers
 [X] remove backend estimate endpoints
 [X] drop unused cols from ds
 [X] fix clipping issue when zooming
 [x] cap max time
 [x] on click, "consider taking vitamin d supplements from x-y"
 [ ] donation link
-[ ] attribution of data sources
-[ ] attribution to me
+[X] attribution of data sources
+[X] attribution to me
 [ ] description of calculation process
 [ ] readme docs
 [ ] review code

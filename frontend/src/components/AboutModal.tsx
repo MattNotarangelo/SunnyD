@@ -77,6 +77,13 @@ export function AboutModal({ onClose, modelVersion }: Props) {
             </p>
           </div>
 
+          <p className="text-xs text-gray-500">
+            Questions? Feel free to contact me at{" "}
+            <a href="mailto:matt.notarangelo1@gmail.com" className="text-amber-400/80 hover:text-amber-400 underline">
+              matt.notarangelo1@gmail.com
+            </a>
+          </p>
+
           <div className="flex items-center justify-between text-xs text-gray-500 pt-1">
             <span>Model v{modelVersion}</span>
             <a
