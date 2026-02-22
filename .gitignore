@@ -209,6 +209,8 @@ __marimo__/
 
 # Data
 uvdvc*
+era5_*.nc
+Complete_TAVG_*.nc
 
 # SunnyD tile cache
 backend/data_cache/

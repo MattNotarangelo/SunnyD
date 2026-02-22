@@ -1,181 +1,110 @@
 #!/usr/bin/env python3
-"""Build temperature_monthly.nc from WorldClim 2.1 average temperature normals.
+"""Build temperature_monthly.nc from ERA5 monthly-averaged 2m temperature.
 
-Downloads the 10-minute resolution (~18 km) monthly average temperature
-GeoTIFFs from WorldClim, interpolates to the 0.25-degree grid matching
-the UV dataset, and saves as a NetCDF for the SunnyD tile server.
+Processes a pre-downloaded ERA5 NetCDF file into a compact 12-month
+climatology for the SunnyD tile server.
 
-Source: https://www.worldclim.org/data/worldclim21.html
-Period: 1970-2000 climatological normals
+Source: Copernicus Climate Data Store — ERA5 monthly averaged reanalysis
+        on single levels, variable "2m temperature".
+        https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels-monthly-means
+Resolution: 0.25° x 0.25°, global (land + ocean)
+Licence: Copernicus licence (https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels-monthly-means?tab=overview)
+
+Prerequisites:
+    Download the ERA5 file manually from CDS (requires free registration)
+    and place it in the repository root. See README for instructions.
 
 Usage:
-    python scripts/build_temperature_nc.py
+    python scripts/build_temperature_nc.py [input_file]
 """
 
 from __future__ import annotations
 
-import io
-import zipfile
+import sys
 from pathlib import Path
 
-import httpx
 import numpy as np
-import tifffile
 import xarray as xr
-from scipy.interpolate import RegularGridInterpolator  # type: ignore[import-untyped]
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-UV_NC = PROJECT_ROOT / "uvdvcclim_world_monthly.nc"
 OUTPUT_NC = PROJECT_ROOT / "temperature_monthly.nc"
-ZIP_CACHE = PROJECT_ROOT / "wc2.1_10m_tavg.zip"
 
-WORLDCLIM_URL = (
-    "https://geodata.ucdavis.edu/climate/worldclim/2_1/base/wc2.1_10m_tavg.zip"
-)
+DEFAULT_INPUT = "era5_monthly-avg-reanalysis_2m-temp_2016-2026.nc"
 
 
-def download(url: str, dest: Path) -> None:
-    if dest.exists():
-        print(f"  cached: {dest.name}")
-        return
-    print(f"  downloading {dest.name} ...")
-    with httpx.Client(follow_redirects=True, timeout=300) as client:
-        resp = client.get(url)
-        resp.raise_for_status()
-    dest.write_bytes(resp.content)
-    size_mb = len(resp.content) / (1024 * 1024)
-    print(f"  saved {size_mb:.1f} MB -> {dest.name}")
-
-
-def read_worldclim_tiffs(zip_path: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Read 12 monthly GeoTIFFs from the WorldClim zip.
-
-    Returns (data, lats, lons) where data is (12, nlat, nlon) in deg C,
-    lats is descending (90 -> -90), lons is ascending (-180 -> 180).
-    """
-    months: dict[int, np.ndarray] = {}
-    with zipfile.ZipFile(zip_path) as zf:
-        for name in sorted(zf.namelist()):
-            if not name.endswith(".tif"):
-                continue
-            # filenames like wc2.1_10m_tavg_01.tif .. _12.tif
-            month_num = int(name.split("_")[-1].replace(".tif", ""))
-            with zf.open(name) as f:
-                data = tifffile.imread(io.BytesIO(f.read()))
-            months[month_num] = data.astype(np.float32)
-            print(f"    month {month_num:2d}: shape {data.shape}")
-
-    stack = np.stack([months[m] for m in range(1, 13)])
-
-    # WorldClim 10-min: 1080 rows x 2160 cols
-    # lat: 90 to -90 (top to bottom), lon: -180 to 180
-    nlat, nlon = stack.shape[1], stack.shape[2]
-    cell = 180.0 / nlat  # 10 arcmin = 1/6 degree
-    lats = np.linspace(90 - cell / 2, -90 + cell / 2, nlat)
-    lons = np.linspace(-180 + cell / 2, 180 - cell / 2, nlon)
-
-    return stack, lats, lons
-
-
-def build() -> None:
-    print("1. Downloading WorldClim 2.1 tavg (10-min) ...")
-    download(WORLDCLIM_URL, ZIP_CACHE)
-
-    print("2. Reading GeoTIFFs ...")
-    wc_data, wc_lats, wc_lons = read_worldclim_tiffs(ZIP_CACHE)
-
-    # WorldClim uses a large negative value for ocean/nodata; mask it
-    wc_data[wc_data < -100] = np.nan
-
-    print("3. Reading target grid from UV dataset ...")
-    uv_ds = xr.open_dataset(UV_NC, engine="h5netcdf")
-    target_lats = uv_ds["latitude"].values.astype(np.float64)
-    target_lons = uv_ds["longitude"].values.astype(np.float64)
-    uv_ds.close()
-
-    print(
-        f"   WorldClim grid: {len(wc_lats)} lats x {len(wc_lons)} lons ({180/len(wc_lats)*60:.0f} arcmin)"
-    )
-    print(
-        f"   Target grid:    {len(target_lats)} lats x {len(target_lons)} lons (0.25 deg)"
-    )
-
-    # WorldClim lats are descending; sort ascending for RegularGridInterpolator
-    wc_lats_asc = wc_lats[::-1]
-    wc_data_asc = wc_data[:, ::-1, :]
-
-    print("4. Interpolating 12 months ...")
-    n_months = 12
-    out = np.full(
-        (n_months, len(target_lats), len(target_lons)), np.nan, dtype=np.float32
-    )
-
-    lat_grid, lon_grid = np.meshgrid(target_lats, target_lons, indexing="ij")
-    pts = np.column_stack([lat_grid.ravel(), lon_grid.ravel()])
-
-    # Build an ocean mask at source resolution, then interpolate it to
-    # the target grid so we can re-stamp NaN on ocean pixels in the output.
-    from scipy.ndimage import distance_transform_edt  # type: ignore[import-untyped]
-
-    ocean_src = np.isnan(wc_data_asc[0]).astype(np.float64)  # 1=ocean, 0=land
-    ocean_interp = RegularGridInterpolator(
-        (wc_lats_asc, wc_lons),
-        ocean_src,
-        method="linear",
-        bounds_error=False,
-        fill_value=1.0,
-    )
-    ocean_mask = ocean_interp(pts).reshape(len(target_lats), len(target_lons)) > 0.5
-
-    for m in range(n_months):
-        data_m = wc_data_asc[m].astype(np.float64)
-
-        # Nearest-fill NaN so the interpolator has valid data everywhere
-        mask = np.isnan(data_m)
-        if mask.any():
-            edt_result: tuple[np.ndarray, np.ndarray] = distance_transform_edt(
-                mask, return_distances=True, return_indices=True
-            )  # type: ignore[assignment]
-            nearest_idx = edt_result[1]
-            data_m = data_m[tuple(nearest_idx)]
-
-        interp = RegularGridInterpolator(
-            (wc_lats_asc, wc_lons),
-            data_m,
-            method="linear",
-            bounds_error=False,
-            fill_value=None,  # type: ignore[arg-type]  # scipy accepts None to extrapolate
-        )
-        result = (
-            interp(pts).reshape(len(target_lats), len(target_lons)).astype(np.float32)
-        )
-        result[ocean_mask] = np.nan
-        out[m] = result
-        land_mean = np.nanmean(out[m])
-        nan_pct = 100 * np.isnan(out[m]).sum() / out[m].size
+def build(input_path: Path) -> None:
+    if not input_path.exists():
         print(
-            f"   month {m + 1:2d}: land mean {land_mean:+.1f} degC, ocean NaN {nan_pct:.0f}%"
+            f"ERROR: Input file not found: {input_path}\n\n"
+            "Download ERA5 monthly-averaged 2m temperature from the Copernicus\n"
+            "Climate Data Store and place the NetCDF in the repository root.\n"
+            "See README.md for instructions.",
+            file=sys.stderr,
         )
+        sys.exit(1)
 
-    print("5. Saving NetCDF ...")
-    ds = xr.Dataset(
+    size_mb = input_path.stat().st_size / (1024 * 1024)
+    print(f"1. Opening {input_path.name} ({size_mb:.0f} MB) ...")
+    ds = xr.open_dataset(input_path, engine="h5netcdf")
+
+    t2m = ds["t2m"]
+    print(f"   shape: {t2m.shape}, units: {t2m.attrs.get('units', '?')}")
+
+    time_coord = "valid_time" if "valid_time" in ds.coords else "time"
+    times = ds[time_coord].values
+    print(f"   time range: {str(times[0])[:7]} to {str(times[-1])[:7]} ({len(times)} months)")
+
+    print("2. Converting K -> °C and computing monthly climatology ...")
+    temp_c = t2m.values - 273.15
+
+    months = np.array([np.datetime64(t, "M").astype(int) % 12 + 1 for t in times])
+
+    lats = ds["latitude"].values
+    lons = ds["longitude"].values
+    nlat, nlon = len(lats), len(lons)
+    out = np.full((12, nlat, nlon), np.nan, dtype=np.float32)
+
+    for m in range(1, 13):
+        idx = months == m
+        out[m - 1] = np.nanmean(temp_c[idx], axis=0).astype(np.float32)
+        mean_val = float(np.nanmean(out[m - 1]))
+        print(f"   month {m:2d}: {idx.sum():3d} years, global mean {mean_val:+.1f} °C")
+
+    # ERA5 longitudes are 0..359.75 — shift to -180..179.75
+    if lons[0] >= 0 and lons[-1] > 180:
+        print("3. Shifting longitude from 0-360 to -180/180 ...")
+        shift = nlon // 2  # 720 for 1440-point grid
+        lons = np.where(lons >= 180, lons - 360, lons)
+        lons = np.roll(lons, shift)
+        out = np.roll(out, shift, axis=2)
+    else:
+        print("3. Longitude already in -180/180 range")
+
+    print(f"   lat: {lats[0]:.2f} to {lats[-1]:.2f}")
+    print(f"   lon: {lons[0]:.2f} to {lons[-1]:.2f}")
+
+    ds.close()
+
+    print("4. Saving NetCDF ...")
+    out_ds = xr.Dataset(
         {"temperature_2m_mean": (["month", "latitude", "longitude"], out)},
         coords={
             "month": np.arange(1, 13),
-            "latitude": target_lats.astype(np.float32),
-            "longitude": target_lons.astype(np.float32),
+            "latitude": lats.astype(np.float32),
+            "longitude": lons.astype(np.float32),
         },
     )
-    ds["temperature_2m_mean"].attrs = {
+    out_ds["temperature_2m_mean"].attrs = {
         "units": "degC",
         "long_name": "Monthly mean 2m air temperature",
-        "source": "WorldClim 2.1 tavg 10-min (1970-2000 normals), bilinear to 0.25 deg",
+        "source": "ERA5 monthly averaged reanalysis, 2m temperature, 0.25 deg",
     }
-    ds.to_netcdf(OUTPUT_NC, engine="h5netcdf")
+    out_ds.to_netcdf(OUTPUT_NC, engine="h5netcdf")
     size_mb = OUTPUT_NC.stat().st_size / (1024 * 1024)
     print(f"   saved: {OUTPUT_NC.name} ({size_mb:.1f} MB)")
     print("Done!")
 
 
 if __name__ == "__main__":
-    build()
+    input_file = Path(sys.argv[1]) if len(sys.argv) > 1 else PROJECT_ROOT / DEFAULT_INPUT
+    build(input_file)

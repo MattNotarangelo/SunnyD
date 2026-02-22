@@ -58,14 +58,19 @@ Frontend decodes: `value = (R * 65536 + G * 256 + B) / scale - offset`
 
 ### Temperature
 
-**WorldClim 2.1** — 10-minute resolution monthly average temperature normals
-(1970-2000 climatological period).
+**ERA5 monthly averaged reanalysis** — 0.25° x 0.25° global (land + ocean)
+2m air temperature from the Copernicus Climate Data Store.
 
-1. Run `python scripts/build_temperature_nc.py` to download and process.
-2. The output `temperature_monthly.nc` is placed in the repository root.
+1. Register (free) at [cds.climate.copernicus.eu](https://cds.climate.copernicus.eu/)
+2. Download "ERA5 monthly averaged data on single levels" → Product type:
+   Monthly averaged reanalysis → Variable: 2m temperature → Years: 2016-2025
+   → All months → Format: NetCDF
+3. Place the file in the repository root
+4. Run `python scripts/build_temperature_nc.py` to compute the 12-month
+   climatology as `temperature_monthly.nc`
 
-Ocean pixels are stored as NaN; the frontend defaults to 25% skin coverage
-when temperature data is unavailable.
+The dataset covers both land and ocean. The frontend defaults to 25% skin
+coverage for any remaining NaN pixels at grid edges.
 
 ## Setup
 
@@ -163,6 +168,6 @@ If `H_D_month <= 0` or `f_cover <= 0`, the result is **Infinity** (insufficient 
 
 ### Weather-adjusted mode
 
-When enabled, skin coverage is computed from the monthly temperature
-climatology using a smoothstep interpolation between 30% (at 5°C) and
-85% (at 30°C). Ocean pixels without temperature data default to 25%.
+When enabled, skin coverage is computed from the ERA5 monthly mean 2m
+temperature using a smoothstep interpolation between 5% (at 0°C) and
+85% (at 25°C). Pixels without temperature data default to 25%.
