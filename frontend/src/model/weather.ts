@@ -9,7 +9,7 @@
  */
 
 const COLD = 0.05;
-const WARM = 0.85;
+const WARM = 0.25;
 const T_MIN = 0;
 const T_MAX = 25;
 

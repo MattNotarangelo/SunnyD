@@ -64,12 +64,24 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
     ? weatherExposure(serverTemp)
     : r?.constants_used.f_cover ?? coverageForFetch;
 
+  // In weather-adjusted mode, recompute minutes with the actual weather
+  // exposure (the server used the 0.25 placeholder, not the real value).
+  const adjustedMinutes =
+    r && modelParams.weatherAdjusted && serverTemp !== null
+      ? computeMinutes(
+          r.intermediate.H_D_month,
+          r.constants_used.k_skin,
+          displayCover,
+          r.constants_used.K_minutes,
+        )
+      : null;
+
   const localFromServer =
     r &&
     computeMinutes(
       r.intermediate.H_D_month,
       r.constants_used.k_skin,
-      r.constants_used.f_cover,
+      displayCover,
       r.constants_used.K_minutes,
     );
 
@@ -113,25 +125,23 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
             />
           )}
           <div className="mt-2 border-t border-gray-700 pt-2">
-            {r.outputs.is_infinite ? (
+            {(adjustedMinutes ?? localFromServer)?.isInfinite || (displayCover <= 0) ? (
               <p className="text-sm text-gray-400 font-semibold">
                 Insufficient UV
               </p>
             ) : (
               <Row
                 label="Minutes required"
-                value={r.outputs.minutes_required != null ? r.outputs.minutes_required.toFixed(1) + " min" : "\u2014"}
+                value={
+                  adjustedMinutes
+                    ? (adjustedMinutes.minutes?.toFixed(1) ?? "\u2014") + " min"
+                    : r.outputs.minutes_required != null
+                      ? r.outputs.minutes_required.toFixed(1) + " min"
+                      : "\u2014"
+                }
               />
             )}
           </div>
-          {localFromServer && !localFromServer.isInfinite && r.outputs.minutes_required && (
-            <div className="text-[10px] text-gray-600 mt-1">
-              Client check: {localFromServer.minutes?.toFixed(1)} min
-              {Math.abs((localFromServer.minutes! - r.outputs.minutes_required) / r.outputs.minutes_required) < 0.01
-                ? " \u2713"
-                : " (mismatch)"}
-            </div>
-          )}
         </div>
       )}
     </div>

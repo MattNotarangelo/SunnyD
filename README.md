@@ -170,4 +170,4 @@ If `H_D_month <= 0` or `f_cover <= 0`, the result is **Infinity** (insufficient 
 
 When enabled, skin coverage is computed from the ERA5 monthly mean 2m
 temperature using a smoothstep interpolation between 5% (at 0°C) and
-85% (at 25°C). Pixels without temperature data default to 25%.
+25% (at 25°C). Pixels without temperature data default to 25%.
