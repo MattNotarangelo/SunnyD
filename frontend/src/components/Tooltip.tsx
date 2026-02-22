@@ -70,7 +70,7 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
     );
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 z-20 bg-gray-900/95 border border-gray-700 rounded-lg shadow-xl p-4 backdrop-blur md:absolute md:left-84 md:right-auto md:w-72">
+    <div className="fixed bottom-4 left-4 right-4 z-20 bg-gray-900/95 border border-gray-700 rounded-lg shadow-xl p-4 backdrop-blur md:absolute md:left-[21rem] md:right-auto md:w-72">
       <div className="flex justify-between items-center mb-3">
         <h3 className="text-sm font-semibold text-amber-400">Location Details</h3>
         <button
@@ -112,7 +112,7 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
             ) : (
               <Row
                 label="Minutes required"
-                value={r.outputs.minutes_required?.toFixed(1) + " min" || "\u2014"}
+                value={r.outputs.minutes_required != null ? r.outputs.minutes_required.toFixed(1) + " min" : "\u2014"}
               />
             )}
           </div>

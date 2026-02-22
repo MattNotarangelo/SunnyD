@@ -10,18 +10,18 @@ daily vitamin D intake, by location, month, skin type, and skin exposure.
 ## Architecture
 
 The backend serves **only numeric UV dose data** (`H_D_month` in J/m²/day) as
-RGB-encoded raster tiles.  All skin-type, IU-target, and coverage calculations
+RGB-encoded raster tiles. All skin-type, IU-target, and coverage calculations
 are performed client-side so that slider changes are instant (no tile reload
 except when the month changes).
 
 ### Endpoints
 
-| Route | Description |
-|---|---|
-| `GET /api/health` | Service health check |
-| `GET /api/methodology` | All model equations, constants, presets |
+| Route                                                   | Description                             |
+| ------------------------------------------------------- | --------------------------------------- |
+| `GET /api/health`                                       | Service health check                    |
+| `GET /api/methodology`                                  | All model equations, constants, presets |
 | `GET /api/estimate?lat&lon&month&skin_type&iu&coverage` | Point estimate (for tooltip validation) |
-| `GET /api/base_tiles/{z}/{x}/{y}.png?month=` | Numeric RGB-encoded base tile |
+| `GET /api/base_tiles/{z}/{x}/{y}.png?month=`            | Numeric RGB-encoded base tile           |
 
 ### Tile encoding
 
@@ -90,14 +90,14 @@ make format
 
 ### Inputs
 
-| Parameter | Description |
-|---|---|
+| Parameter   | Description                                      |
+| ----------- | ------------------------------------------------ |
 | `IU_target` | Desired daily vitamin D (IU): 600, 1000, or 2000 |
-| `f_cover` | Fraction of skin exposed (0–1) |
-| `k_skin` | Fitzpatrick multiplier (see table below) |
-| `T_window` | Midday sun window: 120 minutes |
-| `C_IU` | Calibration constant: 0.10 IU per (J/m²) |
-| `H_min` | Minimum dose threshold: 50 J/m²/day |
+| `f_cover`   | Fraction of skin exposed (0-1)                   |
+| `k_skin`    | Fitzpatrick multiplier (see table below)         |
+| `T_window`  | Midday sun window: 120 minutes                   |
+| `C_IU`      | Calibration constant: 0.10 IU per (J/m²)         |
+| `H_min`     | Minimum dose threshold: 50 J/m²/day              |
 
 ### Equations
 
@@ -113,7 +113,7 @@ If `H_D_month < H_min` or `IU_per_min_user ≤ 0` → result is **Infinity**.
 ### Fitzpatrick skin-type multipliers
 
 | Type | k_skin |
-|------|--------|
+| ---- | ------ |
 | I    | 1.0    |
 | II   | 1.2    |
 | III  | 1.5    |
@@ -123,8 +123,8 @@ If `H_D_month < H_min` or `IU_per_min_user ≤ 0` → result is **Infinity**.
 
 ### Exposure presets
 
-| Preset | f_cover |
-|--------|---------|
-| Face + hands | 0.05 |
-| T-shirt + shorts | 0.25 |
-| Swimsuit | 0.85 |
+| Preset           | f_cover |
+| ---------------- | ------- |
+| Face + hands     | 0.05    |
+| T-shirt + shorts | 0.25    |
+| Swimsuit         | 0.85    |

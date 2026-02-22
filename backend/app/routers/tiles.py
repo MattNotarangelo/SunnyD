@@ -36,7 +36,8 @@ def base_tile(
     y: int,
     month: int = Query(..., ge=1, le=12),
 ) -> Response:
-    assert _tile_service is not None
+    if _tile_service is None:
+        raise HTTPException(status_code=503, detail="UV tile service not initialized")
     _validate_tile(z, x, y)
 
     png = _tile_service.get_tile_png(month, z, x, y)
@@ -54,7 +55,8 @@ def temp_tile(
     y: int,
     month: int = Query(..., ge=1, le=12),
 ) -> Response:
-    assert _temp_tile_service is not None
+    if _temp_tile_service is None:
+        raise HTTPException(status_code=503, detail="Temperature tile service not initialized")
     _validate_tile(z, x, y)
 
     png = _temp_tile_service.get_tile_png(month, z, x, y)

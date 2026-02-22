@@ -6,7 +6,7 @@ GeoTIFFs from WorldClim, interpolates to the 0.25-degree grid matching
 the UV dataset, and saves as a NetCDF for the SunnyD tile server.
 
 Source: https://www.worldclim.org/data/worldclim21.html
-Period: 1970–2000 climatological normals
+Period: 1970-2000 climatological normals
 
 Usage:
     python scripts/build_temperature_nc.py
@@ -22,15 +22,16 @@ import httpx
 import numpy as np
 import tifffile
 import xarray as xr
-from scipy.interpolate import RegularGridInterpolator
+from scipy.interpolate import RegularGridInterpolator  # type: ignore[import-untyped]
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 UV_NC = PROJECT_ROOT / "uvdvcclim_world_monthly.nc"
 OUTPUT_NC = PROJECT_ROOT / "temperature_monthly.nc"
 ZIP_CACHE = PROJECT_ROOT / "wc2.1_10m_tavg.zip"
 
-WORLDCLIM_URL = "https://geodata.ucdavis.edu/climate/worldclim/2_1/base/wc2.1_10m_tavg.zip"
-
+WORLDCLIM_URL = (
+    "https://geodata.ucdavis.edu/climate/worldclim/2_1/base/wc2.1_10m_tavg.zip"
+)
 
 
 def download(url: str, dest: Path) -> None:
@@ -92,8 +93,12 @@ def build() -> None:
     target_lons = uv_ds["longitude"].values.astype(np.float64)
     uv_ds.close()
 
-    print(f"   WorldClim grid: {len(wc_lats)} lats x {len(wc_lons)} lons ({180/len(wc_lats)*60:.0f} arcmin)")
-    print(f"   Target grid:    {len(target_lats)} lats x {len(target_lons)} lons (0.25 deg)")
+    print(
+        f"   WorldClim grid: {len(wc_lats)} lats x {len(wc_lons)} lons ({180/len(wc_lats)*60:.0f} arcmin)"
+    )
+    print(
+        f"   Target grid:    {len(target_lats)} lats x {len(target_lons)} lons (0.25 deg)"
+    )
 
     # WorldClim lats are descending; sort ascending for RegularGridInterpolator
     wc_lats_asc = wc_lats[::-1]
@@ -101,19 +106,24 @@ def build() -> None:
 
     print("4. Interpolating 12 months ...")
     n_months = 12
-    out = np.full((n_months, len(target_lats), len(target_lons)), np.nan, dtype=np.float32)
+    out = np.full(
+        (n_months, len(target_lats), len(target_lons)), np.nan, dtype=np.float32
+    )
 
     lat_grid, lon_grid = np.meshgrid(target_lats, target_lons, indexing="ij")
     pts = np.column_stack([lat_grid.ravel(), lon_grid.ravel()])
 
     # Build an ocean mask at source resolution, then interpolate it to
     # the target grid so we can re-stamp NaN on ocean pixels in the output.
-    from scipy.ndimage import distance_transform_edt
+    from scipy.ndimage import distance_transform_edt  # type: ignore[import-untyped]
 
     ocean_src = np.isnan(wc_data_asc[0]).astype(np.float64)  # 1=ocean, 0=land
     ocean_interp = RegularGridInterpolator(
-        (wc_lats_asc, wc_lons), ocean_src,
-        method="linear", bounds_error=False, fill_value=1.0,
+        (wc_lats_asc, wc_lons),
+        ocean_src,
+        method="linear",
+        bounds_error=False,
+        fill_value=1.0,
     )
     ocean_mask = ocean_interp(pts).reshape(len(target_lats), len(target_lons)) > 0.5
 
@@ -123,7 +133,10 @@ def build() -> None:
         # Nearest-fill NaN so the interpolator has valid data everywhere
         mask = np.isnan(data_m)
         if mask.any():
-            _, nearest_idx = distance_transform_edt(mask, return_distances=True, return_indices=True)
+            edt_result: tuple[np.ndarray, np.ndarray] = distance_transform_edt(
+                mask, return_distances=True, return_indices=True
+            )  # type: ignore[assignment]
+            nearest_idx = edt_result[1]
             data_m = data_m[tuple(nearest_idx)]
 
         interp = RegularGridInterpolator(
@@ -131,14 +144,18 @@ def build() -> None:
             data_m,
             method="linear",
             bounds_error=False,
-            fill_value=None,
+            fill_value=None,  # type: ignore[arg-type]  # scipy accepts None to extrapolate
         )
-        result = interp(pts).reshape(len(target_lats), len(target_lons)).astype(np.float32)
+        result = (
+            interp(pts).reshape(len(target_lats), len(target_lons)).astype(np.float32)
+        )
         result[ocean_mask] = np.nan
         out[m] = result
         land_mean = np.nanmean(out[m])
         nan_pct = 100 * np.isnan(out[m]).sum() / out[m].size
-        print(f"   month {m + 1:2d}: land mean {land_mean:+.1f} degC, ocean NaN {nan_pct:.0f}%")
+        print(
+            f"   month {m + 1:2d}: land mean {land_mean:+.1f} degC, ocean NaN {nan_pct:.0f}%"
+        )
 
     print("5. Saving NetCDF ...")
     ds = xr.Dataset(

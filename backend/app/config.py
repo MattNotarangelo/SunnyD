@@ -33,7 +33,7 @@ H_D_MAX: float = 20_000.0  # theoretical max J/m²/day
 
 # --- Temperature tile encoding ---
 # encoded = (temp_celsius + TEMP_OFFSET) * TEMP_ENCODING_SCALE
-# Range: -50 to +60 °C  →  0–11000, well within 24-bit RGB max (16.7M)
+# Range: -50 to +60 °C  →  0-11000, well within 24-bit RGB max (16.7M)
 TEMP_ENCODING_SCALE: int = 100
 TEMP_OFFSET: float = 50.0
 

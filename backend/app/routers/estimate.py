@@ -5,7 +5,13 @@ import math
 from fastapi import APIRouter, HTTPException, Query
 
 from ..config import EXPOSURE_PRESETS, MODEL_VERSION
-from ..models import EstimateInputs, EstimateResponse
+from ..models import (
+    ConstantsUsed,
+    EstimateInputs,
+    EstimateIntermediate,
+    EstimateOutputs,
+    EstimateResponse,
+)
 from ..services.provider_base import ProviderBase
 from ..services.vitd_model import compute_estimate
 
@@ -28,13 +34,14 @@ def init_temp_provider(provider: ProviderBase) -> None:
 @router.get("/estimate", response_model=EstimateResponse)
 def estimate(
     lat: float = Query(..., ge=-90, le=90),
-    lon: float = Query(...),
+    lon: float = Query(..., ge=-360, le=360),
     month: int = Query(..., ge=1, le=12),
     skin_type: int = Query(..., ge=1, le=6),
     coverage: float | None = Query(None, ge=0, le=1),
     coverage_preset: str | None = Query(None),
 ) -> EstimateResponse:
-    assert _provider is not None
+    if _provider is None:
+        raise HTTPException(status_code=503, detail="UV data provider not initialized")
 
     if coverage is not None:
         f_cover = coverage
@@ -71,10 +78,24 @@ def estimate(
         coverage=f_cover,
     )
 
+    intermediate = EstimateIntermediate(
+        H_D_month=result["intermediate"]["H_D_month"],
+        temperature=temperature,
+    )
+    outputs = EstimateOutputs(
+        minutes_required=result["outputs"]["minutes_required"],
+        is_infinite=result["outputs"]["is_infinite"],
+    )
+    constants_used = ConstantsUsed(
+        K_minutes=result["constants_used"]["K_minutes"],
+        k_skin=result["constants_used"]["k_skin"],
+        f_cover=result["constants_used"]["f_cover"],
+    )
+
     return EstimateResponse(
         inputs=inputs,
-        intermediate={**result["intermediate"], "temperature": temperature},
-        outputs=result["outputs"],
-        constants_used=result["constants_used"],
+        intermediate=intermediate,
+        outputs=outputs,
+        constants_used=constants_used,
         model_version=MODEL_VERSION,
     )

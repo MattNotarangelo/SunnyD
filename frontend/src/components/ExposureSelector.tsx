@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const PRESET_LABELS: Record<string, string> = {
   face_hands: "Winter Clothing",
@@ -16,6 +16,13 @@ interface Props {
 export function ExposureSelector({ coverage, coveragePreset, presets, onChange }: Props) {
   const [customValue, setCustomValue] = useState(coveragePreset === null ? String(coverage) : "");
   const isCustom = coveragePreset === null;
+  const wasCustom = useRef(isCustom);
+  useEffect(() => {
+    if (isCustom && !wasCustom.current) {
+      setCustomValue(String(coverage));
+    }
+    wasCustom.current = isCustom;
+  }, [isCustom, coverage]);
 
   return (
     <div>
@@ -69,7 +76,7 @@ export function ExposureSelector({ coverage, coveragePreset, presets, onChange }
             max={1}
             step={0.01}
             value={isCustom ? customValue : ""}
-            placeholder="0.0–1.0"
+            placeholder="0.0-1.0"
             onChange={(e) => {
               setCustomValue(e.target.value);
               const v = parseFloat(e.target.value);

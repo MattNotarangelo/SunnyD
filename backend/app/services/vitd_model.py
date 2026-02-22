@@ -15,9 +15,9 @@ def compute_estimate(
     h_d_month : float
         Monthly mean daily erythemal dose (J/m²/day).
     f_cover : float
-        Fraction of skin exposed (0–1).
+        Fraction of skin exposed (0-1).
     skin_type : int
-        Fitzpatrick skin type (1–6).
+        Fitzpatrick skin type (1-6).
 
     Returns
     -------

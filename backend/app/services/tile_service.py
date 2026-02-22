@@ -61,7 +61,7 @@ def encode_rgb(
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
 
     valid = ~np.isnan(data)
-    vals = np.clip((data[valid] + offset) * scale, 0, 0xFFFFFF).astype(np.uint32)
+    vals = np.clip(np.round((data[valid] + offset) * scale), 0, 0xFFFFFF).astype(np.uint32)
 
     rgba[valid, 0] = ((vals >> 16) & 0xFF).astype(np.uint8)
     rgba[valid, 1] = ((vals >> 8) & 0xFF).astype(np.uint8)
