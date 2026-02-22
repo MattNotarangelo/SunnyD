@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fetchEstimate } from "../api/estimate";
 import type { EstimateResponse, ModelParams } from "../types";
 import { computeMinutes } from "../model/vitd";
@@ -24,14 +24,12 @@ function Row({ label, value }: { label: string; value: string }) {
 export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
   const [serverResult, setServerResult] = useState<EstimateResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const requestId = useRef(0);
 
-  const serverTemp = serverResult?.intermediate.temperature ?? null;
-
-  const effectiveCover = modelParams.weatherAdjusted
-    ? (serverTemp !== null ? weatherExposure(serverTemp) : 0.25)
-    : modelParams.fCover;
+  const coverageForFetch = modelParams.weatherAdjusted ? 0.25 : modelParams.fCover;
 
   useEffect(() => {
+    const id = ++requestId.current;
     setLoading(true);
     setServerResult(null);
     fetchEstimate({
@@ -44,26 +42,35 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
         }
         return 2;
       })(),
-      coverage: effectiveCover,
+      coverage: coverageForFetch,
     })
-      .then(setServerResult)
+      .then((result) => {
+        if (id === requestId.current) setServerResult(result);
+      })
       .catch(() => {})
-      .finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lat, lon, month, modelParams.kSkin, modelParams.fCover, modelParams.weatherAdjusted]);
+      .finally(() => {
+        if (id === requestId.current) setLoading(false);
+      });
+  }, [lat, lon, month, modelParams.kSkin, coverageForFetch, modelParams.weatherAdjusted]);
 
   const r = serverResult;
+
+  const serverTemp = r?.intermediate.temperature ?? null;
+  const displayCover = modelParams.weatherAdjusted && serverTemp !== null
+    ? weatherExposure(serverTemp)
+    : r?.constants_used.f_cover ?? coverageForFetch;
+
   const localFromServer =
     r &&
     computeMinutes(
       r.intermediate.H_D_month,
-      modelParams.kSkin,
-      effectiveCover,
-      modelParams.kMinutes,
+      r.constants_used.k_skin,
+      r.constants_used.f_cover,
+      r.constants_used.K_minutes,
     );
 
   return (
-    <div className="absolute bottom-4 left-84 z-20 bg-gray-900/95 border border-gray-700 rounded-lg shadow-xl p-4 w-72 backdrop-blur">
+    <div className="fixed bottom-4 left-4 right-4 z-20 bg-gray-900/95 border border-gray-700 rounded-lg shadow-xl p-4 backdrop-blur md:absolute md:left-84 md:right-auto md:w-72">
       <div className="flex justify-between items-center mb-3">
         <h3 className="text-sm font-semibold text-amber-400">Location Details</h3>
         <button
@@ -94,7 +101,7 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
           {modelParams.weatherAdjusted && r.intermediate.temperature !== null && (
             <Row
               label="Weather exposure"
-              value={(effectiveCover * 100).toFixed(0) + "%"}
+              value={(displayCover * 100).toFixed(0) + "%"}
             />
           )}
           <div className="mt-2 border-t border-gray-700 pt-2">
