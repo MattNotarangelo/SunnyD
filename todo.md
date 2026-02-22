@@ -11,3 +11,10 @@
 [X] fix clipping issue when zooming
 [x] cap max time
 [x] on click, "consider taking vitamin d supplements from x-y"
+[ ] donation link
+[ ] attribution of data sources
+[ ] attribution to me
+[ ] description of calculation process
+[ ] readme docs
+[ ] review code
+[ ] clean up scripts and ipynb

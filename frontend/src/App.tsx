@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { AboutModal } from "./components/AboutModal";
 import { ControlPanel } from "./components/ControlPanel";
 import { MapView } from "./components/MapView";
 import { Tooltip } from "./components/Tooltip";
@@ -16,6 +17,7 @@ export default function App() {
   const state = useAppState();
   const [click, setClick] = useState<ClickState | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   const modelParams: ModelParams | null = useMemo(() => {
     if (!methodology) return null;
@@ -80,6 +82,7 @@ export default function App() {
         setCoverage={state.setCoverage}
         open={panelOpen}
         onClose={() => setPanelOpen(false)}
+        onAbout={() => setAboutOpen(true)}
       />
       <MapView
         month={state.month}
@@ -93,6 +96,23 @@ export default function App() {
           month={state.month}
           modelParams={modelParams}
           onClose={() => setClick(null)}
+        />
+      )}
+
+      {/* Footer credit */}
+      <a
+        href="https://github.com/MattNotarangelo/SunnyD"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-2 left-2 z-10 md:left-[21rem] text-[11px] text-white/40 hover:text-white/80 transition-colors bg-black/30 hover:bg-black/50 backdrop-blur-sm rounded px-2 py-0.5"
+      >
+        Built by Matt Notarangelo
+      </a>
+
+      {aboutOpen && (
+        <AboutModal
+          onClose={() => setAboutOpen(false)}
+          modelVersion={methodology.model_version}
         />
       )}
     </div>

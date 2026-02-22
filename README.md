@@ -50,16 +50,34 @@ Frontend decodes: `value = (R * 65536 + G * 256 + B) / scale - offset`
 
 ### UV dose
 
-**TEMIS (KNMI) Vitamin-D-weighted UV Dose** — clear-sky product.
+**TEMIS (KNMI) Vitamin-D-weighted UV Dose** — clear-sky climatology
+(2004-2020 monthly averages, data version 2.0), exported 21 Feb 2026.
 
-1. Download the daily climatology NetCDF (`uvdvcclim_world.nc`) from TEMIS.
+Download: <https://www.temis.nl/uvradiation/v2.0/nc/clim/uvdvcclim_world.nc>
+
+> Van Geffen, J., Van Weele, M., Allaart, M. and Van der A, R.: 2017,
+> TEMIS UV index and UV dose operational data products, version 2.
+> Dataset. Royal Netherlands Meteorological Institute (KNMI).
+> [doi.org/10.21944/temis-uv-oper-v2](https://doi.org/10.21944/temis-uv-oper-v2)
+
+1. Download the daily climatology NetCDF (`uvdvcclim_world.nc`) from the link above.
 2. Run `data.ipynb` to aggregate daily data into monthly means.
 3. The output `uvdvcclim_world_monthly.nc` must be placed in the repository root.
 
 ### Temperature
 
-**ERA5 monthly averaged reanalysis** — 0.25° x 0.25° global (land + ocean)
-2m air temperature from the Copernicus Climate Data Store.
+**ERA5 monthly averaged data on single levels from 1940 to present** —
+0.25° x 0.25° global (land + ocean) 2m air temperature reanalysis from the
+Copernicus Climate Data Store. Years used: 2016–2025 (10-year climatology).
+
+Download: <https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels-monthly-means>
+
+> Hersbach, H., Bell, B., Berrisford, P., Biavati, G., Horányi, A.,
+> Muñoz Sabater, J., Nicolas, J., Peubey, C., Radu, R., Rozum, I.,
+> Schepers, D., Simmons, A., Soci, C., Dee, D., Thépaut, J-N. (2023):
+> ERA5 monthly averaged data on single levels from 1940 to present.
+> Copernicus Climate Change Service (C3S) Climate Data Store (CDS).
+> [doi:10.24381/cds.f17050d7](https://doi.org/10.24381/cds.f17050d7)
 
 1. Register (free) at [cds.climate.copernicus.eu](https://cds.climate.copernicus.eu/)
 2. Download "ERA5 monthly averaged data on single levels" → Product type:

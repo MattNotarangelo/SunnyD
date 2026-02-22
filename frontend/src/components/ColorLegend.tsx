@@ -6,7 +6,7 @@ export function ColorLegend() {
   return (
     <div>
       <label className="block text-sm font-medium text-gray-300 mb-1">
-        Minutes required to reach recommended intake (1000 IU)
+        Sun exposure needed to reach recommended Vitamin D intake (1000 IU)
       </label>
       <div className="flex items-stretch gap-2">
         <div
