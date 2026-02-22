@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { fetchEstimate } from "../api/estimate";
+import { fetchEstimate, fetchSupplement, type SupplementResponse } from "../api/estimate";
 import type { EstimateResponse, ModelParams } from "../types";
 import { computeMinutes } from "../model/vitd";
 import { weatherExposure } from "../model/weather";
@@ -23,31 +23,41 @@ function Row({ label, value }: { label: string; value: string }) {
 
 export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
   const [serverResult, setServerResult] = useState<EstimateResponse | null>(null);
+  const [supplement, setSupplement] = useState<SupplementResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const requestId = useRef(0);
 
   const coverageForFetch = modelParams.weatherAdjusted ? 0.25 : modelParams.fCover;
 
+  const skinType = (() => {
+    for (const [k, v] of Object.entries({ 1: 1.0, 2: 1.2, 3: 1.5, 4: 2.0, 5: 2.8, 6: 3.8 })) {
+      if (v === modelParams.kSkin) return Number(k);
+    }
+    return 2;
+  })();
+
   useEffect(() => {
     const id = ++requestId.current;
     setLoading(true);
     setServerResult(null);
+    setSupplement(null);
     setError(null);
-    fetchEstimate({
-      lat,
-      lon,
-      month,
-      skinType: (() => {
-        for (const [k, v] of Object.entries({ 1: 1.0, 2: 1.2, 3: 1.5, 4: 2.0, 5: 2.8, 6: 3.8 })) {
-          if (v === modelParams.kSkin) return Number(k);
+
+    const estimateReq = fetchEstimate({
+      lat, lon, month, skinType, coverage: coverageForFetch,
+    });
+    const supplementReq = fetchSupplement({
+      lat, lon, skinType, coverage: coverageForFetch,
+      weatherAdjusted: modelParams.weatherAdjusted,
+    });
+
+    Promise.all([estimateReq, supplementReq])
+      .then(([est, supp]) => {
+        if (id === requestId.current) {
+          setServerResult(est);
+          setSupplement(supp);
         }
-        return 2;
-      })(),
-      coverage: coverageForFetch,
-    })
-      .then((result) => {
-        if (id === requestId.current) setServerResult(result);
       })
       .catch((err) => {
         if (id === requestId.current) setError(err instanceof Error ? err.message : "Request failed");
@@ -55,7 +65,7 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
       .finally(() => {
         if (id === requestId.current) setLoading(false);
       });
-  }, [lat, lon, month, modelParams.kSkin, coverageForFetch, modelParams.weatherAdjusted]);
+  }, [lat, lon, month, skinType, coverageForFetch, modelParams.weatherAdjusted]);
 
   const r = serverResult;
 
@@ -142,6 +152,11 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
               />
             )}
           </div>
+          {supplement?.label && (
+            <p className="text-xs text-amber-300/80 mt-2">
+              Consider supplements {supplement.label}
+            </p>
+          )}
         </div>
       )}
     </div>
