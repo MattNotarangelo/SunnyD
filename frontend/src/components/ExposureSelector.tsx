@@ -37,26 +37,26 @@ export function ExposureSelector({ coverage, coveragePreset, presets, onChange }
           <button
             key={key}
             onClick={() => onChange(val, key)}
-            className={`w-full py-1.5 px-3 rounded text-sm text-left transition-colors ${
+            className={`w-full py-1.5 px-3 rounded text-sm text-left transition-colors flex items-center ${
               coveragePreset === key
                 ? "bg-amber-500 text-gray-900 font-medium"
                 : "bg-gray-700 text-gray-300 hover:bg-gray-600"
             }`}
           >
-            {PRESET_LABELS[key] || key}
-            <span className="float-right text-xs opacity-70">{val}</span>
+            <span className="flex-1">{PRESET_LABELS[key] || key}</span>
+            <span className="text-xs opacity-70 w-10 text-right">{val}</span>
           </button>
         ))}
         <button
           onClick={() => onChange(0.25, "weather_adjusted")}
-          className={`w-full py-1.5 px-3 rounded text-sm text-left transition-colors ${
+          className={`w-full py-1.5 px-3 rounded text-sm text-left transition-colors flex items-center ${
             coveragePreset === "weather_adjusted"
               ? "bg-amber-500 text-gray-900 font-medium"
               : "bg-gray-700 text-gray-300 hover:bg-gray-600"
           }`}
         >
-          Weather Adjusted
-          <span className="float-right text-xs opacity-70">auto</span>
+          <span className="flex-1">Weather Adjusted</span>
+          <span className="text-xs opacity-70 w-10 text-right">auto</span>
         </button>
         <div className="flex items-center gap-2">
           <button
