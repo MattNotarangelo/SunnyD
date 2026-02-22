@@ -7,7 +7,8 @@
 [ ] mobile optimised
 [ ] hosting
 [ ] description and disclaimers
-[ ] remove backend estimate endpoints
+[X] remove backend estimate endpoints
 [X] drop unused cols from ds
 [ ] fix clipping issue when zooming
 [x] cap max time
+[ ] on click, "consider taking vitamin d supplements from x-y"

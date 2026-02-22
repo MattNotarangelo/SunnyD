@@ -20,14 +20,27 @@ log = logging.getLogger(__name__)
 MAX_LAT = 85.0511287798
 
 
-def tile_to_bbox(z: int, x: int, y: int) -> tuple[float, float, float, float]:
-    """Convert tile coordinates to (lat_min, lat_max, lon_min, lon_max) in WGS-84."""
+def mercator_lat_array(z: int, y: int, height: int) -> NDArray[np.float32]:
+    """Compute per-row latitudes that follow Web Mercator projection.
+
+    Each row maps to the centre of the corresponding pixel in the global
+    Mercator grid, ensuring the data aligns with the base-map tiles.
+    """
+    n = 2.0**z
+    lats = np.empty(height, dtype=np.float32)
+    for row in range(height):
+        y_frac = y + (row + 0.5) / height
+        lat_rad = math.atan(math.sinh(math.pi * (1 - 2 * y_frac / n)))
+        lats[row] = math.degrees(lat_rad)
+    return lats
+
+
+def tile_lon_array(z: int, x: int, width: int) -> NDArray[np.float32]:
+    """Compute per-column longitudes for a tile."""
     n = 2.0**z
     lon_min = x / n * 360.0 - 180.0
     lon_max = (x + 1) / n * 360.0 - 180.0
-    lat_max = math.degrees(math.atan(math.sinh(math.pi * (1 - 2 * y / n))))
-    lat_min = math.degrees(math.atan(math.sinh(math.pi * (1 - 2 * (y + 1) / n))))
-    return lat_min, lat_max, lon_min, lon_max
+    return np.linspace(lon_min, lon_max, width, dtype=np.float32)
 
 
 def encode_rgb(
@@ -98,10 +111,9 @@ class TileService:
         if cached.exists():
             return cached.read_bytes()
 
-        lat_min, lat_max, lon_min, lon_max = tile_to_bbox(z, x, y)
-        data = self._provider.get_tile_data(
-            month, lat_min, lat_max, lon_min, lon_max, TILE_SIZE, TILE_SIZE
-        )
+        target_lats = mercator_lat_array(z, y, TILE_SIZE)
+        target_lons = tile_lon_array(z, x, TILE_SIZE)
+        data = self._provider.get_tile_data(month, target_lats, target_lons)
         rgba = encode_rgb(data, self._encoding_scale, self._encoding_offset)
 
         img = Image.fromarray(rgba)

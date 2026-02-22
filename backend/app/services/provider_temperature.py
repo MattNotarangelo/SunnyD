@@ -44,16 +44,9 @@ class ProviderTemperature(ProviderBase):
     def get_tile_data(
         self,
         month: int,
-        lat_min: float,
-        lat_max: float,
-        lon_min: float,
-        lon_max: float,
-        height: int,
-        width: int,
+        target_lats: NDArray[np.float32],
+        target_lons: NDArray[np.float32],
     ) -> NDArray[np.float32]:
-        target_lats = np.linspace(lat_max, lat_min, height, dtype=np.float32)
-        target_lons = np.linspace(lon_min, lon_max, width, dtype=np.float32)
-
         slice_da = self._temp.sel(month=month)
         sampled = slice_da.sel(
             latitude=xr.DataArray(target_lats, dims="y"),

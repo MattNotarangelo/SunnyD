@@ -27,8 +27,8 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
 
   const serverTemp = serverResult?.intermediate.temperature ?? null;
 
-  const effectiveCover = modelParams.weatherAdjusted && serverTemp !== null
-    ? weatherExposure(serverTemp)
+  const effectiveCover = modelParams.weatherAdjusted
+    ? (serverTemp !== null ? weatherExposure(serverTemp) : 0.25)
     : modelParams.fCover;
 
   useEffect(() => {

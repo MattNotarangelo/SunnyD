@@ -100,9 +100,7 @@ async function colorize(
       let fCover = params.fCover;
       if (params.weatherAdjusted && temps) {
         const tempC = temps[i];
-        if (!isNaN(tempC)) {
-          fCover = weatherExposure(tempC);
-        }
+        fCover = isNaN(tempC) ? 0.25 : weatherExposure(tempC);
       }
       const result = computeMinutes(val, params.kSkin, fCover, params.kMinutes);
       minutes = result.minutes;

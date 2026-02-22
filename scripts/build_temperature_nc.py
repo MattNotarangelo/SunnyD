@@ -32,6 +32,7 @@ ZIP_CACHE = PROJECT_ROOT / "wc2.1_10m_tavg.zip"
 WORLDCLIM_URL = "https://geodata.ucdavis.edu/climate/worldclim/2_1/base/wc2.1_10m_tavg.zip"
 
 
+
 def download(url: str, dest: Path) -> None:
     if dest.exists():
         print(f"  cached: {dest.name}")
@@ -105,10 +106,21 @@ def build() -> None:
     lat_grid, lon_grid = np.meshgrid(target_lats, target_lons, indexing="ij")
     pts = np.column_stack([lat_grid.ravel(), lon_grid.ravel()])
 
+    # Build an ocean mask at source resolution, then interpolate it to
+    # the target grid so we can re-stamp NaN on ocean pixels in the output.
+    from scipy.ndimage import distance_transform_edt
+
+    ocean_src = np.isnan(wc_data_asc[0]).astype(np.float64)  # 1=ocean, 0=land
+    ocean_interp = RegularGridInterpolator(
+        (wc_lats_asc, wc_lons), ocean_src,
+        method="linear", bounds_error=False, fill_value=1.0,
+    )
+    ocean_mask = ocean_interp(pts).reshape(len(target_lats), len(target_lons)) > 0.5
+
     for m in range(n_months):
         data_m = wc_data_asc[m].astype(np.float64)
-        # Fill NaN (ocean) with nearest valid value for smooth interpolation
-        from scipy.ndimage import distance_transform_edt
+
+        # Nearest-fill NaN so the interpolator has valid data everywhere
         mask = np.isnan(data_m)
         if mask.any():
             _, nearest_idx = distance_transform_edt(mask, return_distances=True, return_indices=True)
@@ -121,8 +133,12 @@ def build() -> None:
             bounds_error=False,
             fill_value=None,
         )
-        out[m] = interp(pts).reshape(len(target_lats), len(target_lons)).astype(np.float32)
-        print(f"   month {m + 1:2d}: mean {np.nanmean(out[m]):+.1f} degC")
+        result = interp(pts).reshape(len(target_lats), len(target_lons)).astype(np.float32)
+        result[ocean_mask] = np.nan
+        out[m] = result
+        land_mean = np.nanmean(out[m])
+        nan_pct = 100 * np.isnan(out[m]).sum() / out[m].size
+        print(f"   month {m + 1:2d}: land mean {land_mean:+.1f} degC, ocean NaN {nan_pct:.0f}%")
 
     print("5. Saving NetCDF ...")
     ds = xr.Dataset(

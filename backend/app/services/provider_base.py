@@ -7,14 +7,11 @@ from numpy.typing import NDArray
 
 
 class ProviderBase(ABC):
-    """Abstract base for UV dose data providers.
-
-    All dose values are returned in J/m²/day.
-    """
+    """Abstract base for gridded data providers."""
 
     @abstractmethod
     def get_monthly_dose(self, month: int, lat: float, lon: float) -> float:
-        """Return H_D_month (J/m²/day) for a single point.
+        """Return a single-point value for the given location.
 
         Returns NaN when no data is available.
         """
@@ -23,17 +20,13 @@ class ProviderBase(ABC):
     def get_tile_data(
         self,
         month: int,
-        lat_min: float,
-        lat_max: float,
-        lon_min: float,
-        lon_max: float,
-        height: int,
-        width: int,
+        target_lats: NDArray[np.float32],
+        target_lons: NDArray[np.float32],
     ) -> NDArray[np.float32]:
-        """Return a (height, width) array of H_D_month (J/m²/day).
+        """Return a (height, width) array sampled at the given lat/lon arrays.
 
-        Samples the grid over the given bounding box.  Pixels outside data
-        coverage are NaN.
+        target_lats has shape (height,), target_lons has shape (width,).
+        Pixels outside data coverage are NaN.
         """
 
     @abstractmethod
