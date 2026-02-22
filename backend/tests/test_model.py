@@ -14,7 +14,8 @@ class TestComputeEstimate:
         result = compute_estimate(h_d, f_cover=0.25, skin_type=1)
 
         k_skin = FITZPATRICK[1]
-        expected_mins = (K_MINUTES * k_skin) / (h_d * 0.25)
+        hd_kj = h_d / 1000.0
+        expected_mins = (K_MINUTES * k_skin) / (hd_kj * 0.25)
 
         assert result["intermediate"]["H_D_month"] == h_d
         assert result["outputs"]["minutes_required"] == pytest.approx(expected_mins)

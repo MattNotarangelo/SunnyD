@@ -9,35 +9,46 @@ daily vitamin D intake, by location, month, skin type, and skin exposure.
 
 ## Architecture
 
-The backend serves **only numeric UV dose data** (`H_D_month` in J/m²/day) as
-RGB-encoded raster tiles. All skin-type, IU-target, and coverage calculations
-are performed client-side so that slider changes are instant (no tile reload
-except when the month changes).
+The backend serves **numeric UV dose data** (`H_D_month` in J/m²/day) and
+**temperature data** (°C) as RGB-encoded raster tiles. All skin-type and
+coverage calculations are performed client-side so that slider changes are
+instant (no tile reload except when the month changes).
+
+A "Weather Adjusted" mode uses monthly temperature climatology to
+automatically set skin coverage based on estimated local temperature.
 
 ### Endpoints
 
-| Route                                                   | Description                             |
-| ------------------------------------------------------- | --------------------------------------- |
-| `GET /api/health`                                       | Service health check                    |
-| `GET /api/methodology`                                  | All model equations, constants, presets |
-| `GET /api/estimate?lat&lon&month&skin_type&iu&coverage` | Point estimate (for tooltip validation) |
-| `GET /api/base_tiles/{z}/{x}/{y}.png?month=`            | Numeric RGB-encoded base tile           |
+| Route                                                     | Description                              |
+| --------------------------------------------------------- | ---------------------------------------- |
+| `GET /api/health`                                         | Service health check                     |
+| `GET /api/methodology`                                    | All model equations, constants, presets   |
+| `GET /api/estimate?lat&lon&month&skin_type&coverage`      | Point estimate (for tooltip validation)  |
+| `GET /api/base_tiles/{z}/{x}/{y}.png?month=`              | Numeric RGB-encoded UV base tile         |
+| `GET /api/temp_tiles/{z}/{x}/{y}.png?month=`              | Numeric RGB-encoded temperature tile     |
 
 ### Tile encoding
 
-Each pixel packs `H_D_month` into 24-bit RGB:
+Each pixel packs a float value into 24-bit RGB:
 
 ```
-encoded = round(H_D_month × 100)
+encoded = round((value + offset) * scale)
 R = (encoded >> 16) & 0xFF
 G = (encoded >>  8) & 0xFF
 B =  encoded        & 0xFF
 A = 255 (valid) | 0 (no data)
 ```
 
-Frontend decodes: `H_D_month = (R × 65536 + G × 256 + B) / 100.0`
+| Tile type    | Scale | Offset |
+| ------------ | ----- | ------ |
+| UV dose      | 100   | 0      |
+| Temperature  | 100   | 50     |
 
-## Data source
+Frontend decodes: `value = (R * 65536 + G * 256 + B) / scale - offset`
+
+## Data sources
+
+### UV dose
 
 **TEMIS (KNMI) Vitamin-D-weighted UV Dose** — clear-sky product.
 
@@ -45,33 +56,56 @@ Frontend decodes: `H_D_month = (R × 65536 + G × 256 + B) / 100.0`
 2. Run `data.ipynb` to aggregate daily data into monthly means.
 3. The output `uvdvcclim_world_monthly.nc` must be placed in the repository root.
 
-If the monthly NetCDF is not present, the app falls back to a synthetic sample
-data provider.
+### Temperature
+
+**WorldClim 2.1** — 10-minute resolution monthly average temperature normals
+(1970-2000 climatological period).
+
+1. Run `python scripts/build_temperature_nc.py` to download and process.
+2. The output `temperature_monthly.nc` is placed in the repository root.
+
+Ocean pixels are stored as NaN; the frontend defaults to 25% skin coverage
+when temperature data is unavailable.
 
 ## Setup
 
 ### Prerequisites
 
 - Python 3.12+
-- The monthly NetCDF file (see above)
+- Node.js 22+
+- The UV monthly NetCDF file (see above)
+- Optionally, the temperature NetCDF for weather-adjusted mode
+
+### Environment variables
+
+| Variable           | Default                | Description                          |
+| ------------------ | ---------------------- | ------------------------------------ |
+| `SUNNYD_DATA_DIR`  | Repository root        | Directory containing NetCDF files    |
+| `SUNNYD_CACHE_DIR` | `backend/data_cache/`  | Directory for tile cache             |
 
 ### Local development
 
 ```bash
-cd backend
+# Backend
 pip install -r requirements.txt
-cd ..
 make dev
+
+# Frontend (separate terminal)
+cd frontend && npm install && npm run dev
 ```
 
 The API will be available at `http://localhost:8000`.
 Interactive docs at `http://localhost:8000/docs`.
+Frontend dev server at `http://localhost:5173`.
 
 ### Docker
 
 ```bash
 make docker-up
 ```
+
+The frontend is served at `http://localhost:3000` with nginx proxying
+`/api/` requests to the backend.
 
 ### Running tests
 
@@ -82,33 +116,30 @@ make test
 ### Linting
 
 ```bash
-make lint
-make format
+make lint          # backend (ruff)
+make lint-frontend # frontend (tsc)
+make format        # auto-format backend
 ```
 
 ## Model
 
+### Equation
+
+```
+hd_kj   = H_D_month / 1000
+minutes = (K_minutes * k_skin) / (hd_kj * f_cover)
+```
+
+Where `K_minutes = 20.2` is the dose-time constant.
+
+If `H_D_month <= 0` or `f_cover <= 0`, the result is **Infinity** (insufficient UV).
+
 ### Inputs
 
-| Parameter   | Description                                      |
-| ----------- | ------------------------------------------------ |
-| `IU_target` | Desired daily vitamin D (IU): 600, 1000, or 2000 |
-| `f_cover`   | Fraction of skin exposed (0-1)                   |
-| `k_skin`    | Fitzpatrick multiplier (see table below)         |
-| `T_window`  | Midday sun window: 120 minutes                   |
-| `C_IU`      | Calibration constant: 0.10 IU per (J/m²)         |
-| `H_min`     | Minimum dose threshold: 50 J/m²/day              |
-
-### Equations
-
-```
-Hdot_D         = H_D_month / T_window
-IU_per_min_ref = C_IU × Hdot_D
-IU_per_min_user = IU_per_min_ref × f_cover / k_skin
-t_minutes      = IU_target / IU_per_min_user
-```
-
-If `H_D_month < H_min` or `IU_per_min_user ≤ 0` → result is **Infinity**.
+| Parameter | Description                          |
+| --------- | ------------------------------------ |
+| `f_cover` | Fraction of skin exposed (0-1)       |
+| `k_skin`  | Fitzpatrick multiplier (see below)   |
 
 ### Fitzpatrick skin-type multipliers
 
@@ -123,8 +154,15 @@ If `H_D_month < H_min` or `IU_per_min_user ≤ 0` → result is **Infinity**.
 
 ### Exposure presets
 
-| Preset           | f_cover |
-| ---------------- | ------- |
-| Face + hands     | 0.05    |
-| T-shirt + shorts | 0.25    |
-| Swimsuit         | 0.85    |
+| Preset             | f_cover |
+| ------------------ | ------- |
+| Winter Clothing    | 0.05    |
+| T-shirt + shorts   | 0.25    |
+| Swimsuit           | 0.85    |
+| Weather Adjusted   | auto    |
+
+### Weather-adjusted mode
+
+When enabled, skin coverage is computed from the monthly temperature
+climatology using a smoothstep interpolation between 30% (at 5°C) and
+85% (at 30°C). Ocean pixels without temperature data default to 25%.

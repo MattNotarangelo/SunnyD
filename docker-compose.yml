@@ -1,11 +1,13 @@
 services:
   backend:
     build:
-      context: ./backend
+      context: .
+      dockerfile: backend/Dockerfile
     ports:
       - "8000:8000"
     volumes:
       - ./uvdvcclim_world_monthly.nc:/data/uvdvcclim_world_monthly.nc:ro
+      - ./temperature_monthly.nc:/data/temperature_monthly.nc:ro
       - backend-cache:/cache
     environment:
       - PYTHONUNBUFFERED=1
@@ -16,7 +18,7 @@ services:
     build:
       context: ./frontend
     ports:
-      - "3000:3000"
+      - "3000:80"
     depends_on:
       - backend
 

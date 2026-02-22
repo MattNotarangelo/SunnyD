@@ -45,14 +45,11 @@ class ProviderSample(ProviderBase):
     def get_tile_data(
         self,
         month: int,
-        lat_min: float,
-        lat_max: float,
-        lon_min: float,
-        lon_max: float,
-        height: int,
-        width: int,
+        target_lats: NDArray[np.float32],
+        target_lons: NDArray[np.float32],
     ) -> NDArray[np.float32]:
-        target_lats = np.linspace(lat_max, lat_min, height, dtype=np.float32)
+        height = len(target_lats)
+        width = len(target_lons)
         out = np.empty((height, width), dtype=np.float32)
         for i, lat in enumerate(target_lats):
             out[i, :] = self._dose_at(month, float(lat))

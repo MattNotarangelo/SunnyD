@@ -6,8 +6,9 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncIterator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from .config import (
     MODEL_VERSION,
@@ -30,6 +31,7 @@ log = logging.getLogger(__name__)
 _backend_dir = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.environ.get("SUNNYD_DATA_DIR", str(_backend_dir.parent)))
 CACHE_DIR = Path(os.environ.get("SUNNYD_CACHE_DIR", str(_backend_dir / "data_cache")))
+CORS_ORIGINS = os.environ.get("SUNNYD_CORS_ORIGINS", "*")
 
 
 @asynccontextmanager
@@ -69,19 +71,34 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     yield
 
 
+_disable_docs = os.environ.get("SUNNYD_DISABLE_DOCS", "").lower() in ("1", "true", "yes")
+
 app = FastAPI(
     title="SunnyD API",
     description="Global Vitamin D Sun Exposure Estimator",
     version=MODEL_VERSION,
     lifespan=lifespan,
+    docs_url=None if _disable_docs else "/docs",
+    redoc_url=None if _disable_docs else "/redoc",
+    openapi_url=None if _disable_docs else "/openapi.json",
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[o.strip() for o in CORS_ORIGINS.split(",")],
     allow_methods=["GET"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    log.exception("Unhandled exception on %s %s", request.method, request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+    )
+
 
 app.include_router(health.router)
 app.include_router(methodology.router)

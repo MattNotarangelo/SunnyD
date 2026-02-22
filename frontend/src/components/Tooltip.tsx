@@ -24,6 +24,7 @@ function Row({ label, value }: { label: string; value: string }) {
 export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
   const [serverResult, setServerResult] = useState<EstimateResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const requestId = useRef(0);
 
   const coverageForFetch = modelParams.weatherAdjusted ? 0.25 : modelParams.fCover;
@@ -32,6 +33,7 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
     const id = ++requestId.current;
     setLoading(true);
     setServerResult(null);
+    setError(null);
     fetchEstimate({
       lat,
       lon,
@@ -47,7 +49,9 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
       .then((result) => {
         if (id === requestId.current) setServerResult(result);
       })
-      .catch(() => {})
+      .catch((err) => {
+        if (id === requestId.current) setError(err instanceof Error ? err.message : "Request failed");
+      })
       .finally(() => {
         if (id === requestId.current) setLoading(false);
       });
@@ -85,6 +89,10 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
       <Row label="Longitude" value={lon.toFixed(3) + "\u00b0"} />
 
       {loading && <p className="text-xs text-gray-500 mt-2">Loading...</p>}
+
+      {error && (
+        <p className="text-xs text-red-400 mt-2">Failed to load estimate</p>
+      )}
 
       {r && (
         <div className="mt-3 border-t border-gray-700 pt-2 flex flex-col gap-1">

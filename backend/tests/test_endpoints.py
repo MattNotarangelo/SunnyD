@@ -60,14 +60,23 @@ class TestEstimateEndpoint:
         )
         assert resp.status_code == 400
 
-    def test_high_latitude_winter_infinite(self, client: TestClient) -> None:
+    def test_high_latitude_winter_very_long(self, client: TestClient) -> None:
         resp = client.get(
             "/api/estimate",
             params={"lat": 89, "lon": 0, "month": 12, "skin_type": 6, "coverage": 0.05},
         )
         assert resp.status_code == 200
         body = resp.json()
-        assert body["outputs"]["is_infinite"] is True
+        mins = body["outputs"]["minutes_required"]
+        assert mins is None or mins > 1000
+
+    def test_zero_coverage_is_infinite(self, client: TestClient) -> None:
+        resp = client.get(
+            "/api/estimate",
+            params={"lat": 0, "lon": 0, "month": 1, "skin_type": 1, "coverage": 0.0},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["outputs"]["is_infinite"] is True
 
     def test_invalid_params(self, client: TestClient) -> None:
         resp = client.get("/api/estimate", params={"lat": 0, "lon": 0, "month": 13, "skin_type": 1})

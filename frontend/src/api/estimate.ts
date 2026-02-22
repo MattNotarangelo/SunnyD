@@ -15,6 +15,13 @@ export async function fetchEstimate(params: {
     coverage: String(params.coverage),
   });
   const resp = await fetch(`/api/estimate?${qs}`);
-  if (!resp.ok) throw new Error(`Estimate fetch failed: ${resp.status}`);
+  if (!resp.ok) {
+    let detail = `HTTP ${resp.status}`;
+    try {
+      const body = await resp.json();
+      if (body.detail) detail = body.detail;
+    } catch { /* ignore parse errors */ }
+    throw new Error(detail);
+  }
   return resp.json();
 }
