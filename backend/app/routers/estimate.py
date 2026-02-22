@@ -146,6 +146,8 @@ def _format_month_range(months: list[int]) -> str | None:
             ordered.append(m)
     if not ordered:
         return None
+    if len(ordered) == 1:
+        return MONTH_ABBR[ordered[0] - 1]
     return f"{MONTH_ABBR[ordered[0] - 1]}\u2013{MONTH_ABBR[ordered[-1] - 1]}"
 
 

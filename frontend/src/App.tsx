@@ -104,14 +104,18 @@ export default function App() {
         />
       )}
 
-      {/* Footer credit */}
+      {/* Buy Me a Coffee */}
       <a
-        href="https://github.com/MattNotarangelo/SunnyD"
+        href="https://www.buymeacoffee.com/mattnotarangelo"
         target="_blank"
         rel="noopener noreferrer"
-        className="fixed bottom-2 left-2 z-10 md:left-[21rem] text-[11px] text-white/40 hover:text-white/80 transition-colors bg-black/30 hover:bg-black/50 backdrop-blur-sm rounded px-2 py-0.5"
+        className="fixed bottom-3 left-3 z-10 md:left-[21.5rem]"
       >
-        Built by Matt ☀️
+        <img
+          src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png"
+          alt="Buy Me A Coffee"
+          className="h-[40px] w-auto rounded-lg shadow-lg hover:opacity-90 transition-opacity"
+        />
       </a>
 
       {aboutOpen && <AboutModal onClose={() => setAboutOpen(false)} modelVersion={methodology.model_version} />}

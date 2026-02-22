@@ -154,7 +154,7 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
           </div>
           {supplement?.label && (
             <p className="text-xs text-amber-300/80 mt-2">
-              Consider supplements {supplement.label}
+              Consider supplemental Vitamin D during {supplement.label}
             </p>
           )}
         </div>
