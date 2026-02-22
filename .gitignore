@@ -212,3 +212,5 @@ uvdvc*
 
 # SunnyD tile cache
 backend/data_cache/
+temperature*
+wc2.1*
