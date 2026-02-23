@@ -110,22 +110,19 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
           />
         )}
         <div className="mt-2 border-t border-gray-700 pt-2">
-          {(adjustedMinutes ?? localFromServer).isInfinite || displayCover <= 0 ? (
-            <p className="text-sm text-gray-400 font-semibold">
-              Insufficient UV
-            </p>
-          ) : (
-            <Row
-              label="Exposure time required"
-              value={
-                adjustedMinutes
-                  ? (adjustedMinutes.minutes?.toFixed(1) ?? "\u2014") + " min"
-                  : r.outputs.minutes_required != null
-                    ? r.outputs.minutes_required.toFixed(1) + " min"
-                    : "\u2014"
-              }
-            />
-          )}
+          {(() => {
+            const result = adjustedMinutes ?? localFromServer;
+            const mins = result.minutes;
+            if (result.isInfinite || displayCover <= 0 || (mins != null && mins > 360)) {
+              return <Row label="Exposure time required" value="Impossible" />;
+            }
+            return (
+              <Row
+                label="Exposure time required"
+                value={mins != null ? mins.toFixed(1) + " min" : "\u2014"}
+              />
+            );
+          })()}
         </div>
         {supplementKey === requestKey && supplement?.label && (
           <p className="text-xs text-amber-300/80 mt-2">
