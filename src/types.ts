@@ -47,6 +47,7 @@ export interface AppState {
 }
 
 export interface ModelParams {
+  skinType: number;
   fCover: number;
   kSkin: number;
   kMinutes: number;

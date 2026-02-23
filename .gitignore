@@ -3,6 +3,8 @@ node_modules/
 
 # Build output
 dist/
+*.log
+coverage/
 
 # Python
 __pycache__/

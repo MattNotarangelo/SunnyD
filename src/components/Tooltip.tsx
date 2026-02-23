@@ -26,13 +26,7 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
   const [supplementKey, setSupplementKey] = useState("");
 
   const coverageForCalc = modelParams.weatherAdjusted ? 0.25 : modelParams.fCover;
-
-  const skinType = (() => {
-    for (const [k, v] of Object.entries({ 1: 1.0, 2: 1.2, 3: 1.5, 4: 2.0, 5: 2.8, 6: 3.8 })) {
-      if (v === modelParams.kSkin) return Number(k);
-    }
-    return 2;
-  })();
+  const skinType = modelParams.skinType;
 
   const r = useMemo(
     () => getEstimate({ lat, lon, month, skinType, coverage: coverageForCalc }),

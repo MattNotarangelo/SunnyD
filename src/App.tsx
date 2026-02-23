@@ -59,6 +59,7 @@ export default function App() {
 
   const modelParams: ModelParams = useMemo(
     () => ({
+      skinType: state.skinType,
       fCover: state.coverage,
       kSkin: methodology.fitzpatrick_table[String(state.skinType)] ?? 1,
       kMinutes: methodology.constants.K_minutes,
