@@ -1,12 +1,13 @@
-.PHONY: dev dev-backend dev-frontend test lint format docker-up docker-down
+.PHONY: dev build build-data test lint format
 
-dev: dev-backend
-
-dev-backend:
-	cd backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-dev-frontend:
+dev:
 	cd frontend && npm run dev
+
+build-data:
+	python3 scripts/build_grids.py
+
+build: build-data
+	cd frontend && npm run build
 
 test:
 	cd backend && python -m pytest tests/ -v
@@ -19,9 +20,3 @@ lint-frontend:
 
 format:
 	cd backend && ruff format app/ tests/
-
-docker-up:
-	docker compose up --build -d
-
-docker-down:
-	docker compose down

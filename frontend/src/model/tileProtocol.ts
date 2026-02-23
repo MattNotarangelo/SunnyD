@@ -1,41 +1,13 @@
 import { addProtocol } from "maplibre-gl";
 import type { ModelParams } from "../types";
 import { minutesToColorPacked } from "./colorScale";
+import { sampleTile } from "./gridData";
 import { buildRawPng } from "./rawPng";
 import { weatherExposure } from "./weather";
 
 const TILE_SIZE = 256;
 const PIXEL_COUNT = TILE_SIZE * TILE_SIZE;
-const NODATA_U16 = 0xFFFF;
-
-const MAX_CACHE_ENTRIES = 512; // ~64 MB per cache (512 × 128 KB)
-
-class TileCache {
-  private map = new Map<string, Uint16Array>();
-  private keys: string[] = [];
-
-  get(key: string): Uint16Array | undefined {
-    return this.map.get(key);
-  }
-
-  set(key: string, value: Uint16Array) {
-    if (this.map.has(key)) return;
-    if (this.keys.length >= MAX_CACHE_ENTRIES) {
-      const evict = this.keys.shift()!;
-      this.map.delete(evict);
-    }
-    this.keys.push(key);
-    this.map.set(key, value);
-  }
-
-  clear() {
-    this.map.clear();
-    this.keys.length = 0;
-  }
-}
-
-const uvCache = new TileCache();
-const tempCache = new TileCache();
+const NODATA_U16 = 0xffff;
 
 let currentParams: ModelParams | null = null;
 
@@ -43,36 +15,8 @@ export function setModelParams(params: ModelParams) {
   currentParams = params;
 }
 
-function cacheKey(month: number, z: number, x: number, y: number): string {
-  return `${month}/${z}/${x}/${y}`;
-}
-
-async function fetchTileU16(url: string): Promise<Uint16Array> {
-  const resp = await fetch(url);
-  if (!resp.ok) throw new Error(`Tile fetch failed: ${resp.status}`);
-  return new Uint16Array(await resp.arrayBuffer());
-}
-
-async function fetchUV(month: number, z: number, x: number, y: number): Promise<Uint16Array> {
-  const key = cacheKey(month, z, x, y);
-  const cached = uvCache.get(key);
-  if (cached) return cached;
-  const u16 = await fetchTileU16(`/api/base_tiles/${z}/${x}/${y}.bin?month=${month}`);
-  uvCache.set(key, u16);
-  return u16;
-}
-
-async function fetchTemp(month: number, z: number, x: number, y: number): Promise<Uint16Array> {
-  const key = cacheKey(month, z, x, y);
-  const cached = tempCache.get(key);
-  if (cached) return cached;
-  const u16 = await fetchTileU16(`/api/temp_tiles/${z}/${x}/${y}.bin?month=${month}`);
-  tempCache.set(key, u16);
-  return u16;
-}
-
 /**
- * Single-pass colorize: reads raw uint16 tiles, computes minutes inline,
+ * Single-pass colorize: reads raw uint16 grid samples, computes minutes inline,
  * looks up color from the pre-computed LUT, and writes packed RGBA via Uint32Array.
  */
 function colorize(uvU16: Uint16Array, tempU16: Uint16Array | null, params: ModelParams): ArrayBuffer {
@@ -80,12 +24,6 @@ function colorize(uvU16: Uint16Array, tempU16: Uint16Array | null, params: Model
   const rgba32 = new Uint32Array(rgba.buffer);
 
   const { kSkin, kMinutes, fCover, encodingScale, weatherAdjusted, tempEncodingScale, tempOffset } = params;
-  // Pre-compute: minutes = (kMinutes * kSkin) / (hdKj * fc)
-  //            = (kMinutes * kSkin * 1000) / (rawU16 / encodingScale * 1000 * fc)
-  //            = (kMinutes * kSkin * 1000 * encodingScale) / (rawU16 * fc * 1000)
-  //            = (kMinutes * kSkin * encodingScale) / (rawU16 * fc)
-  // Wait — hDMonth (J/m²) = rawU16 / encodingScale, hdKj = hDMonth / 1000
-  // minutes = (kMinutes * kSkin) / (hdKj * fc) = (kMinutes * kSkin * 1000 * encodingScale) / (rawU16 * fc)
   const numerator = kMinutes * kSkin * 1000 * encodingScale;
 
   for (let i = 0; i < PIXEL_COUNT; i++) {
@@ -129,16 +67,11 @@ export function registerProtocol() {
     const { month, z, x, y } = parseTileUrl(params.url);
     if (!currentParams) throw new Error("Model params not yet initialized");
 
-    const [uvU16, tempU16] = await Promise.all([
-      fetchUV(month, z, x, y),
-      currentParams.weatherAdjusted ? fetchTemp(month, z, x, y) : null,
-    ]);
+    const uvU16 = sampleTile("uv", month, z, x, y);
+    const tempU16 = currentParams.weatherAdjusted
+      ? sampleTile("temp", month, z, x, y)
+      : null;
 
     return { data: colorize(uvU16, tempU16, currentParams) };
   });
-}
-
-export function clearCache() {
-  uvCache.clear();
-  tempCache.clear();
 }

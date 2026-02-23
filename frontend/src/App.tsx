@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AboutModal } from "./components/AboutModal";
 import { ControlPanel } from "./components/ControlPanel";
 import { MapView } from "./components/MapView";
 import { Tooltip } from "./components/Tooltip";
 import { useAppState } from "./hooks/useAppState";
 import { useMethodology } from "./hooks/useMethodology";
+import { loadMonth, monthReady, prefetchAllMonths } from "./model/gridData";
 import type { ModelParams } from "./types";
 
 interface ClickState {
@@ -13,15 +14,34 @@ interface ClickState {
 }
 
 export default function App() {
-  const { methodology, error } = useMethodology();
+  const { methodology } = useMethodology();
   const state = useAppState();
   const [click, setClick] = useState<ClickState | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [ready, setReady] = useState(monthReady(state.month));
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const modelParams: ModelParams | null = useMemo(() => {
-    if (!methodology) return null;
-    return {
+  // Load current month's grids, then background-prefetch the rest
+  useEffect(() => {
+    let cancelled = false;
+    setReady(monthReady(state.month));
+    setLoadError(null);
+    loadMonth(state.month)
+      .then(() => {
+        if (!cancelled) {
+          setReady(true);
+          prefetchAllMonths();
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setLoadError(err instanceof Error ? err.message : "Failed to load data");
+      });
+    return () => { cancelled = true; };
+  }, [state.month]);
+
+  const modelParams: ModelParams = useMemo(
+    () => ({
       fCover: state.coverage,
       kSkin: methodology.fitzpatrick_table[String(state.skinType)] ?? 1,
       kMinutes: methodology.constants.K_minutes,
@@ -30,22 +50,22 @@ export default function App() {
       month: state.month,
       tempEncodingScale: methodology.encoding.temp_encoding_scale,
       tempOffset: methodology.encoding.temp_offset,
-    };
-  }, [methodology, state.month, state.coverage, state.coveragePreset, state.skinType]);
+    }),
+    [methodology, state.month, state.coverage, state.coveragePreset, state.skinType],
+  );
 
-  if (error) {
+  if (loadError) {
     return (
       <div className="h-full flex items-center justify-center bg-gray-900 text-red-400">
         <div className="text-center">
-          <p className="text-lg font-semibold">Failed to load configuration</p>
-          <p className="text-sm mt-2 text-gray-500">{error}</p>
-          <p className="text-sm mt-1 text-gray-600">Is the backend running on port 8000?</p>
+          <p className="text-lg font-semibold">Failed to load data</p>
+          <p className="text-sm mt-2 text-gray-500">{loadError}</p>
         </div>
       </div>
     );
   }
 
-  if (!methodology || !modelParams) {
+  if (!ready) {
     return (
       <div className="h-full flex items-center justify-center bg-gray-900">
         <div className="text-center">
