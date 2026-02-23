@@ -176,13 +176,14 @@ If $H_D \leq 0$ or $f_{\text{exposed}} \leq 0$, the result is $\infty$ (insuffic
 
 | Preset           | f_cover |
 | ---------------- | ------- |
+| Weather Adjusted | auto    |
 | Winter Clothing  | 0.05    |
 | T-shirt + shorts | 0.25    |
 | Swimsuit         | 0.85    |
-| Weather Adjusted | auto    |
 
 ### Weather-adjusted mode
 
-When enabled, skin coverage is computed from the ERA5 monthly mean 2m
-temperature using a smoothstep interpolation between 5% (at 0°C) and
-25% (at 25°C). Pixels without temperature data default to 25%.
+When enabled, skin coverage is estimated from the local average maximum
+temperature (ERA5 monthly mean + 5°C offset) using a smoothstep
+interpolation between 5% (at 5°C) and 25% (at 30°C). Pixels without
+temperature data default to 25%.
