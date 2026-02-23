@@ -19,13 +19,13 @@ automatically set skin coverage based on estimated local temperature.
 
 ### Endpoints
 
-| Route                                                     | Description                              |
-| --------------------------------------------------------- | ---------------------------------------- |
-| `GET /api/health`                                         | Service health check                     |
-| `GET /api/methodology`                                    | All model equations, constants, presets   |
-| `GET /api/estimate?lat&lon&month&skin_type&coverage`      | Point estimate (for tooltip validation)  |
-| `GET /api/base_tiles/{z}/{x}/{y}.png?month=`              | Numeric RGB-encoded UV base tile         |
-| `GET /api/temp_tiles/{z}/{x}/{y}.png?month=`              | Numeric RGB-encoded temperature tile     |
+| Route                                                | Description                             |
+| ---------------------------------------------------- | --------------------------------------- |
+| `GET /api/health`                                    | Service health check                    |
+| `GET /api/methodology`                               | All model equations, constants, presets |
+| `GET /api/estimate?lat&lon&month&skin_type&coverage` | Point estimate (for tooltip validation) |
+| `GET /api/base_tiles/{z}/{x}/{y}.png?month=`         | Numeric RGB-encoded UV base tile        |
+| `GET /api/temp_tiles/{z}/{x}/{y}.png?month=`         | Numeric RGB-encoded temperature tile    |
 
 ### Tile encoding
 
@@ -39,10 +39,10 @@ B =  encoded        & 0xFF
 A = 255 (valid) | 0 (no data)
 ```
 
-| Tile type    | Scale | Offset |
-| ------------ | ----- | ------ |
-| UV dose      | 100   | 0      |
-| Temperature  | 100   | 50     |
+| Tile type   | Scale | Offset |
+| ----------- | ----- | ------ |
+| UV dose     | 100   | 0      |
+| Temperature | 100   | 50     |
 
 Frontend decodes: `value = (R * 65536 + G * 256 + B) / scale - offset`
 
@@ -68,7 +68,7 @@ Download: <https://www.temis.nl/uvradiation/v2.0/nc/clim/uvdvcclim_world.nc>
 
 **ERA5 monthly averaged data on single levels from 1940 to present** —
 0.25° x 0.25° global (land + ocean) 2m air temperature reanalysis from the
-Copernicus Climate Data Store. Years used: 2016–2025 (10-year climatology).
+Copernicus Climate Data Store. Years used: 2016-2025 (10-year climatology).
 
 Download: <https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels-monthly-means>
 
@@ -101,10 +101,10 @@ coverage for any remaining NaN pixels at grid edges.
 
 ### Environment variables
 
-| Variable           | Default                | Description                          |
-| ------------------ | ---------------------- | ------------------------------------ |
-| `SUNNYD_DATA_DIR`  | Repository root        | Directory containing NetCDF files    |
-| `SUNNYD_CACHE_DIR` | `backend/data_cache/`  | Directory for tile cache             |
+| Variable           | Default               | Description                       |
+| ------------------ | --------------------- | --------------------------------- |
+| `SUNNYD_DATA_DIR`  | Repository root       | Directory containing NetCDF files |
+| `SUNNYD_CACHE_DIR` | `backend/data_cache/` | Directory for tile cache          |
 
 ### Local development
 
@@ -159,10 +159,10 @@ If `H_D_month <= 0` or `f_cover <= 0`, the result is **Infinity** (insufficient 
 
 ### Inputs
 
-| Parameter | Description                          |
-| --------- | ------------------------------------ |
-| `f_cover` | Fraction of skin exposed (0-1)       |
-| `k_skin`  | Fitzpatrick multiplier (see below)   |
+| Parameter | Description                        |
+| --------- | ---------------------------------- |
+| `f_cover` | Fraction of skin exposed (0-1)     |
+| `k_skin`  | Fitzpatrick multiplier (see below) |
 
 ### Fitzpatrick skin-type multipliers
 
@@ -177,12 +177,12 @@ If `H_D_month <= 0` or `f_cover <= 0`, the result is **Infinity** (insufficient 
 
 ### Exposure presets
 
-| Preset             | f_cover |
-| ------------------ | ------- |
-| Winter Clothing    | 0.05    |
-| T-shirt + shorts   | 0.25    |
-| Swimsuit           | 0.85    |
-| Weather Adjusted   | auto    |
+| Preset           | f_cover |
+| ---------------- | ------- |
+| Winter Clothing  | 0.05    |
+| T-shirt + shorts | 0.25    |
+| Swimsuit         | 0.85    |
+| Weather Adjusted | auto    |
 
 ### Weather-adjusted mode
 

@@ -7,7 +7,7 @@ export function AboutModal({ onClose, modelVersion }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative bg-gray-900 border border-gray-700 rounded-xl shadow-2xl max-w-md w-full p-6 text-white">
+      <div className="relative bg-gray-900 border border-gray-700 rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 text-white">
         <button
           onClick={onClose}
           className="absolute top-3 right-3 text-gray-500 hover:text-white text-lg leading-none"
@@ -24,7 +24,62 @@ export function AboutModal({ onClose, modelVersion }: Props) {
             location, month, skin type, and exposed skin area.
           </p>
 
+          {/* Model derivation */}
           <div>
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Model</h3>
+            <p className="text-xs text-gray-400 mb-2">
+              The human body is treated as a 3D collector of the vitamin-D-weighted UV energy reported by the TEMIS
+              satellite.
+            </p>
+
+            <h4 className="text-xs font-semibold text-gray-300 mt-2 mb-1">Variables</h4>
+            <ul className="text-xs text-gray-400 space-y-0.5 list-disc list-inside">
+              <li>
+                <span className="text-gray-300 font-mono">H_D</span> — Daily Vitamin-D UV dose from TEMIS (kJ/m²)
+              </li>
+              <li>
+                <span className="text-gray-300 font-mono">BSA</span> — Total body surface area (≈ 1.8 m²)
+              </li>
+              <li>
+                <span className="text-gray-300 font-mono">f_exposed</span> — Fraction of skin exposed (0-1)
+              </li>
+              <li>
+                <span className="text-gray-300 font-mono">C_geo</span> — Geometry factor = 0.33 (only ≈⅓ of exposed skin
+                faces the sun)
+              </li>
+              <li>
+                <span className="text-gray-300 font-mono">T_peak</span> — Solar window = 240 min (dose delivered over ~4
+                h midday)
+              </li>
+              <li>
+                <span className="text-gray-300 font-mono">E_target</span> — 0.05 kJ (energy needed for 1,000 IU, based
+                on 0.25 MED over 25% BSA)
+              </li>
+              <li>
+                <span className="text-gray-300 font-mono">M_fitz</span> — Fitzpatrick skin-type multiplier
+              </li>
+            </ul>
+
+            <h4 className="text-xs font-semibold text-gray-300 mt-3 mb-1">Energy rate hitting the skin (kJ/min)</h4>
+            <div className="bg-gray-800 rounded px-3 py-2 text-xs font-mono text-amber-300/90 overflow-x-auto">
+              Rate = (H_D / T_peak) × (BSA × f_exposed × C_geo)
+            </div>
+
+            <h4 className="text-xs font-semibold text-gray-300 mt-2 mb-1">Time to reach target energy</h4>
+            <div className="bg-gray-800 rounded px-3 py-2 text-xs font-mono text-amber-300/90 overflow-x-auto">
+              Time (min) = E_target / Rate
+            </div>
+
+            <h4 className="text-xs font-semibold text-gray-300 mt-2 mb-1">
+              Combined formula (with constants substituted)
+            </h4>
+            <div className="bg-gray-800 rounded px-3 py-2 text-xs font-mono text-amber-300/90 overflow-x-auto">
+              Time = (0.05 × 240) / (H_D × 1.8 × f_exposed × 0.33 × M_fitz)
+            </div>
+          </div>
+
+          {/* Data sources */}
+          <div className="border-t border-gray-700 pt-3">
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Data Sources</h3>
             <ul className="space-y-1 text-xs text-gray-400">
               <li>

@@ -126,7 +126,7 @@ class SupplementResponse(BaseModel):
 
 
 def _format_month_range(months: list[int]) -> str | None:
-    """Format a list of 1-based months into a human-readable range like 'Oct–Mar'."""
+    """Format a list of 1-based months into a human-readable range like 'Oct-Mar'."""
     if not months or len(months) == 12:
         return "all year" if len(months) == 12 else None
     s = set(months)
