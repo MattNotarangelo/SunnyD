@@ -67,14 +67,14 @@ export function AboutModal({ onClose, modelVersion }: Props) {
 
             <h4 className="text-xs font-semibold text-gray-300 mt-2 mb-1">Time to reach target energy</h4>
             <div className="bg-gray-800 rounded px-3 py-2 text-xs font-mono text-amber-300/90 overflow-x-auto">
-              Time (min) = E_target / Rate
+              Time (min) = (E_target × M_fitz) / Rate
             </div>
 
             <h4 className="text-xs font-semibold text-gray-300 mt-2 mb-1">
               Combined formula (with constants substituted)
             </h4>
             <div className="bg-gray-800 rounded px-3 py-2 text-xs font-mono text-amber-300/90 overflow-x-auto">
-              Time = (0.05 × 240) / (H_D × 1.8 × f_exposed × 0.33 × M_fitz)
+              Time = (0.05 × 240 × M_fitz) / (H_D × 1.8 × f_exposed × 0.33)
             </div>
           </div>
 

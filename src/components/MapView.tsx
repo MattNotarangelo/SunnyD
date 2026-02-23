@@ -25,9 +25,19 @@ export function MapView({ month, modelParams, onMapClick }: Props) {
   const versionRef = useRef(0);
   const monthRef = useRef(month);
   const paramsRef = useRef(modelParams);
+  const onMapClickRef = useRef(onMapClick);
 
-  monthRef.current = month;
-  paramsRef.current = modelParams;
+  useEffect(() => {
+    monthRef.current = month;
+  }, [month]);
+
+  useEffect(() => {
+    paramsRef.current = modelParams;
+  }, [modelParams]);
+
+  useEffect(() => {
+    onMapClickRef.current = onMapClick;
+  }, [onMapClick]);
 
   useEffect(() => {
     setModelParams(modelParams);
@@ -108,14 +118,14 @@ export function MapView({ month, modelParams, onMapClick }: Props) {
 
     map.on("click", (e) => {
       const lon = (((e.lngLat.lng % 360) + 540) % 360) - 180;
-      onMapClick({ lat: e.lngLat.lat, lon });
+      onMapClickRef.current({ lat: e.lngLat.lat, lon });
     });
 
     return () => {
       mapRef.current = null;
       map.remove();
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [updateTileSource]);
 
   return <div ref={containerRef} className="flex-1 h-full" />;
 }

@@ -23,6 +23,7 @@ function Row({ label, value }: { label: string; value: string }) {
 
 export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
   const [supplement, setSupplement] = useState<SupplementResponse | null>(null);
+  const [supplementKey, setSupplementKey] = useState("");
 
   const coverageForCalc = modelParams.weatherAdjusted ? 0.25 : modelParams.fCover;
 
@@ -37,21 +38,27 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
     () => getEstimate({ lat, lon, month, skinType, coverage: coverageForCalc }),
     [lat, lon, month, skinType, coverageForCalc],
   );
+  const requestKey = `${lat}:${lon}:${skinType}:${coverageForCalc}:${modelParams.weatherAdjusted}`;
 
   useEffect(() => {
     let cancelled = false;
-    setSupplement(null);
+    const key = requestKey;
     getSupplement({
       lat,
       lon,
       skinType,
       coverage: coverageForCalc,
       weatherAdjusted: modelParams.weatherAdjusted,
-    }).then((s) => {
-      if (!cancelled) setSupplement(s);
-    });
+    })
+      .then((s) => {
+        if (!cancelled) {
+          setSupplement(s);
+          setSupplementKey(key);
+        }
+      })
+      .catch(() => { /* supplement is optional; silently degrade */ });
     return () => { cancelled = true; };
-  }, [lat, lon, skinType, coverageForCalc, modelParams.weatherAdjusted]);
+  }, [lat, lon, skinType, coverageForCalc, modelParams.weatherAdjusted, requestKey]);
 
   const serverTemp = r.intermediate.temperature ?? null;
   const displayCover =
@@ -126,7 +133,7 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
             />
           )}
         </div>
-        {supplement?.label && (
+        {supplementKey === requestKey && supplement?.label && (
           <p className="text-xs text-amber-300/80 mt-2">
             Consider supplemental Vitamin D during {supplement.label}
           </p>

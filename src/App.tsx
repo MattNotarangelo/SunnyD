@@ -1,8 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { AboutModal } from "./components/AboutModal";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { ControlPanel } from "./components/ControlPanel";
 import { MapView } from "./components/MapView";
-import { Tooltip } from "./components/Tooltip";
 import { useAppState } from "./hooks/useAppState";
 import { useMethodology } from "./hooks/useMethodology";
 import { loadMonth, monthReady, prefetchAllMonths } from "./model/gridData";
@@ -12,6 +10,14 @@ interface ClickState {
   lat: number;
   lon: number;
 }
+
+const Tooltip = lazy(() =>
+  import("./components/Tooltip").then((m) => ({ default: m.Tooltip })),
+);
+
+const AboutModal = lazy(() =>
+  import("./components/AboutModal").then((m) => ({ default: m.AboutModal })),
+);
 
 export default function App() {
   const { methodology } = useMethodology();
@@ -25,19 +31,30 @@ export default function App() {
   // Load current month's grids, then background-prefetch the rest
   useEffect(() => {
     let cancelled = false;
-    setReady(monthReady(state.month));
-    setLoadError(null);
-    loadMonth(state.month)
-      .then(() => {
+    Promise.resolve().then(async () => {
+      if (cancelled) return;
+      setLoadError(null);
+      if (monthReady(state.month)) {
+        setReady(true);
+        prefetchAllMonths();
+        return;
+      }
+
+      setReady(false);
+      try {
+        await loadMonth(state.month);
+        if (cancelled) return;
+        setReady(true);
+        prefetchAllMonths();
+      } catch (err) {
         if (!cancelled) {
-          setReady(true);
-          prefetchAllMonths();
+          setLoadError(err instanceof Error ? err.message : "Failed to load data");
         }
-      })
-      .catch((err) => {
-        if (!cancelled) setLoadError(err instanceof Error ? err.message : "Failed to load data");
-      });
-    return () => { cancelled = true; };
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [state.month]);
 
   const modelParams: ModelParams = useMemo(
@@ -115,13 +132,15 @@ export default function App() {
       />
       <MapView month={state.month} modelParams={modelParams} onMapClick={(info) => setClick(info)} />
       {click && (
-        <Tooltip
-          lat={click.lat}
-          lon={click.lon}
-          month={state.month}
-          modelParams={modelParams}
-          onClose={() => setClick(null)}
-        />
+        <Suspense fallback={null}>
+          <Tooltip
+            lat={click.lat}
+            lon={click.lon}
+            month={state.month}
+            modelParams={modelParams}
+            onClose={() => setClick(null)}
+          />
+        </Suspense>
       )}
 
       {/* Buy Me a Coffee */}
@@ -138,7 +157,11 @@ export default function App() {
         />
       </a>
 
-      {aboutOpen && <AboutModal onClose={() => setAboutOpen(false)} modelVersion={methodology.model_version} />}
+      {aboutOpen && (
+        <Suspense fallback={null}>
+          <AboutModal onClose={() => setAboutOpen(false)} modelVersion={methodology.model_version} />
+        </Suspense>
+      )}
     </div>
   );
 }
