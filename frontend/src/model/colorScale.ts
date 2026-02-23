@@ -69,3 +69,47 @@ export function legendEntries(n: number): { minutes: number; color: string }[] {
   }
   return entries;
 }
+
+// ── Pre-computed color LUT for fast tile rendering ──────────────────
+// Maps a "minutes" value quantised to 0..LUT_SIZE-1 into packed RGBA.
+
+const LUT_SIZE = 4096;
+const LUT_MINUTES_MAX = MAX_MINUTES;
+
+/** Packed RGBA LUT: index 0 = 0 min, index LUT_SIZE-1 = MAX_MINUTES */
+const colorLUT = new Uint32Array(LUT_SIZE);
+/** RGBA for infinite / >MAX_MINUTES */
+let darkRedPacked: number;
+/** RGBA for NaN / no-data */
+let transparentPacked: number;
+
+function packRGBA(r: number, g: number, b: number, a: number): number {
+  return r | (g << 8) | (b << 16) | (a << 24);
+}
+
+function initLUT() {
+  for (let i = 0; i < LUT_SIZE; i++) {
+    const minutes = (i / (LUT_SIZE - 1)) * LUT_MINUTES_MAX;
+    const t = (Math.log10(Math.max(minutes, 0.01)) - LOG_MIN) / LOG_RANGE;
+    const [r, g, b, a] = lerpStops(t);
+    colorLUT[i] = packRGBA(r, g, b, a);
+  }
+  darkRedPacked = packRGBA(...DARK_RED);
+  transparentPacked = packRGBA(...TRANSPARENT);
+}
+initLUT();
+
+/**
+ * Look up color for a minutes value using the pre-computed LUT.
+ * Returns a packed uint32 (little-endian ABGR for ImageData).
+ */
+export function minutesToColorPacked(
+  minutes: number,
+  isInfinite: boolean,
+  isNoData: boolean,
+): number {
+  if (isNoData) return transparentPacked;
+  if (isInfinite || minutes > LUT_MINUTES_MAX) return darkRedPacked;
+  const idx = (minutes / LUT_MINUTES_MAX) * (LUT_SIZE - 1) | 0;
+  return colorLUT[idx < 0 ? 0 : idx >= LUT_SIZE ? LUT_SIZE - 1 : idx];
+}

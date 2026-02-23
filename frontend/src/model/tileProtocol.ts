@@ -1,12 +1,15 @@
 import { addProtocol } from "maplibre-gl";
 import type { ModelParams } from "../types";
-import { minutesToColor } from "./colorScale";
-import { computeMinutes, decodeUint16Tile } from "./vitd";
+import { minutesToColorPacked } from "./colorScale";
+import { buildRawPng } from "./rawPng";
 import { weatherExposure } from "./weather";
 
 const TILE_SIZE = 256;
-const uvCache = new Map<string, Float32Array>();
-const tempCache = new Map<string, Float32Array>();
+const PIXEL_COUNT = TILE_SIZE * TILE_SIZE;
+const NODATA_U16 = 0xFFFF;
+
+const uvCache = new Map<string, Uint16Array>();
+const tempCache = new Map<string, Uint16Array>();
 
 let currentParams: ModelParams | null = null;
 
@@ -18,93 +21,71 @@ function cacheKey(month: number, z: number, x: number, y: number): string {
   return `${month}/${z}/${x}/${y}`;
 }
 
-async function fetchTileBin(
-  url: string,
-  encodingScale: number,
-  encodingOffset: number,
-): Promise<Float32Array> {
+async function fetchTileU16(url: string): Promise<Uint16Array> {
   const resp = await fetch(url);
   if (!resp.ok) throw new Error(`Tile fetch failed: ${resp.status}`);
-  const buf = await resp.arrayBuffer();
-  return decodeUint16Tile(buf, encodingScale, encodingOffset);
+  return new Uint16Array(await resp.arrayBuffer());
 }
 
-async function fetchUV(
-  month: number,
-  z: number,
-  x: number,
-  y: number,
-  encodingScale: number,
-): Promise<Float32Array> {
+async function fetchUV(month: number, z: number, x: number, y: number): Promise<Uint16Array> {
   const key = cacheKey(month, z, x, y);
   const cached = uvCache.get(key);
   if (cached) return cached;
-
-  const url = `/api/base_tiles/${z}/${x}/${y}.bin?month=${month}`;
-  const hd = await fetchTileBin(url, encodingScale, 0);
-  uvCache.set(key, hd);
-  return hd;
+  const u16 = await fetchTileU16(`/api/base_tiles/${z}/${x}/${y}.bin?month=${month}`);
+  uvCache.set(key, u16);
+  return u16;
 }
 
-async function fetchTemp(
-  month: number,
-  z: number,
-  x: number,
-  y: number,
-  encodingScale: number,
-  encodingOffset: number,
-): Promise<Float32Array> {
+async function fetchTemp(month: number, z: number, x: number, y: number): Promise<Uint16Array> {
   const key = cacheKey(month, z, x, y);
   const cached = tempCache.get(key);
   if (cached) return cached;
-
-  const url = `/api/temp_tiles/${z}/${x}/${y}.bin?month=${month}`;
-  const temps = await fetchTileBin(url, encodingScale, encodingOffset);
-  tempCache.set(key, temps);
-  return temps;
+  const u16 = await fetchTileU16(`/api/temp_tiles/${z}/${x}/${y}.bin?month=${month}`);
+  tempCache.set(key, u16);
+  return u16;
 }
 
-async function colorize(
-  hd: Float32Array,
-  temps: Float32Array | null,
-  params: ModelParams,
-): Promise<Blob> {
-  const canvas = new OffscreenCanvas(TILE_SIZE, TILE_SIZE);
-  const ctx = canvas.getContext("2d")!;
-  const imageData = ctx.createImageData(TILE_SIZE, TILE_SIZE);
-  const out = imageData.data;
+/**
+ * Single-pass colorize: reads raw uint16 tiles, computes minutes inline,
+ * looks up color from the pre-computed LUT, and writes packed RGBA via Uint32Array.
+ */
+function colorize(uvU16: Uint16Array, tempU16: Uint16Array | null, params: ModelParams): ArrayBuffer {
+  const rgba = new Uint8Array(PIXEL_COUNT * 4);
+  const rgba32 = new Uint32Array(rgba.buffer);
 
-  for (let i = 0; i < hd.length; i++) {
-    const val = hd[i];
-    const isNoData = isNaN(val);
-    let minutes: number | null = null;
-    let isInfinite = false;
+  const { kSkin, kMinutes, fCover, encodingScale, weatherAdjusted, tempEncodingScale, tempOffset } = params;
+  // Pre-compute: minutes = (kMinutes * kSkin) / (hdKj * fc)
+  //            = (kMinutes * kSkin * 1000) / (rawU16 / encodingScale * 1000 * fc)
+  //            = (kMinutes * kSkin * 1000 * encodingScale) / (rawU16 * fc * 1000)
+  //            = (kMinutes * kSkin * encodingScale) / (rawU16 * fc)
+  // Wait — hDMonth (J/m²) = rawU16 / encodingScale, hdKj = hDMonth / 1000
+  // minutes = (kMinutes * kSkin) / (hdKj * fc) = (kMinutes * kSkin * 1000 * encodingScale) / (rawU16 * fc)
+  const numerator = kMinutes * kSkin * 1000 * encodingScale;
 
-    if (!isNoData) {
-      let fCover = params.fCover;
-      if (params.weatherAdjusted && temps) {
-        const tempC = temps[i];
-        fCover = isNaN(tempC) ? 0.25 : weatherExposure(tempC);
-      }
-      const result = computeMinutes(val, params.kSkin, fCover, params.kMinutes);
-      minutes = result.minutes;
-      isInfinite = result.isInfinite;
+  for (let i = 0; i < PIXEL_COUNT; i++) {
+    const raw = uvU16[i];
+    if (raw === NODATA_U16) {
+      rgba32[i] = minutesToColorPacked(0, false, true);
+      continue;
     }
 
-    const [r, g, b, a] = minutesToColor(minutes, isInfinite, isNoData);
-    const off = i * 4;
-    out[off] = r;
-    out[off + 1] = g;
-    out[off + 2] = b;
-    out[off + 3] = a;
+    let fc = fCover;
+    if (weatherAdjusted && tempU16) {
+      const tRaw = tempU16[i];
+      fc = tRaw === NODATA_U16 ? 0.25 : weatherExposure(tRaw / tempEncodingScale - tempOffset);
+    }
+
+    if (raw === 0 || fc <= 0) {
+      rgba32[i] = minutesToColorPacked(Infinity, true, false);
+    } else {
+      rgba32[i] = minutesToColorPacked(numerator / (raw * fc), false, false);
+    }
   }
 
-  ctx.putImageData(imageData, 0, 0);
-  return canvas.convertToBlob({ type: "image/png" });
+  return buildRawPng(rgba, TILE_SIZE, TILE_SIZE);
 }
 
 function parseTileUrl(url: string): { month: number; z: number; x: number; y: number } {
-  // sunnyd://{z}/{x}/{y}?month=M&_v=N
   const stripped = url.replace("sunnyd://", "");
   const [path, query] = stripped.split("?");
   const [zStr, xStr, yStr] = path.split("/");
@@ -120,25 +101,16 @@ function parseTileUrl(url: string): { month: number; z: number; x: number; y: nu
 export function registerProtocol() {
   addProtocol("sunnyd", async (params) => {
     const { month, z, x, y } = parseTileUrl(params.url);
+    if (!currentParams) throw new Error("Model params not yet initialized");
 
-    if (!currentParams) {
-      throw new Error("Model params not yet initialized");
-    }
+    const uvU16 = await fetchUV(month, z, x, y);
 
-    const hd = await fetchUV(month, z, x, y, currentParams.encodingScale);
-
-    let temps: Float32Array | null = null;
+    let tempU16: Uint16Array | null = null;
     if (currentParams.weatherAdjusted) {
-      temps = await fetchTemp(
-        month, z, x, y,
-        currentParams.tempEncodingScale,
-        currentParams.tempOffset,
-      );
+      tempU16 = await fetchTemp(month, z, x, y);
     }
 
-    const blob = await colorize(hd, temps, currentParams);
-    const arrayBuffer = await blob.arrayBuffer();
-    return { data: arrayBuffer };
+    return { data: colorize(uvU16, tempU16, currentParams) };
   });
 }
 
