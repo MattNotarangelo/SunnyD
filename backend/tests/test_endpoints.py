@@ -84,24 +84,24 @@ class TestEstimateEndpoint:
 
 
 class TestBaseTileEndpoint:
-    def test_returns_png(self, client: TestClient) -> None:
-        resp = client.get("/api/base_tiles/0/0/0.png", params={"month": 1})
+    def test_returns_binary(self, client: TestClient) -> None:
+        resp = client.get("/api/base_tiles/0/0/0.bin", params={"month": 1})
         assert resp.status_code == 200
-        assert resp.headers["content-type"] == "image/png"
-        assert resp.content[:8] == b"\x89PNG\r\n\x1a\n"
+        assert resp.headers["content-type"] == "application/octet-stream"
+        assert len(resp.content) == 256 * 256 * 2  # uint16 per pixel
 
     def test_cache_header(self, client: TestClient) -> None:
-        resp = client.get("/api/base_tiles/0/0/0.png", params={"month": 6})
+        resp = client.get("/api/base_tiles/0/0/0.bin", params={"month": 6})
         assert "max-age=86400" in resp.headers.get("cache-control", "")
 
     def test_invalid_zoom(self, client: TestClient) -> None:
-        resp = client.get("/api/base_tiles/11/0/0.png", params={"month": 1})
+        resp = client.get("/api/base_tiles/11/0/0.bin", params={"month": 1})
         assert resp.status_code == 400
 
     def test_missing_month(self, client: TestClient) -> None:
-        resp = client.get("/api/base_tiles/0/0/0.png")
+        resp = client.get("/api/base_tiles/0/0/0.bin")
         assert resp.status_code == 422
 
     def test_tile_out_of_range(self, client: TestClient) -> None:
-        resp = client.get("/api/base_tiles/1/3/0.png", params={"month": 1})
+        resp = client.get("/api/base_tiles/1/3/0.bin", params={"month": 1})
         assert resp.status_code == 400

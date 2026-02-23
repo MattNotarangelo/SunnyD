@@ -26,15 +26,15 @@ EXPOSURE_PRESETS: dict[str, float] = {
 }
 
 # --- Tile encoding ---
+# uint16, Brotli-compressed. 0xFFFF = no-data, max valid = 65534.
+# UV:   0–20,000 J/m² × 3 → 0–60,000.  Precision: 0.33 J/m²
+# Temp: (-50+50)–(60+50) × 100 → 0–11,000.  Precision: 0.01 °C
 
 TILE_SIZE: int = 256
-ENCODING_SCALE: int = 100  # H_D_month * ENCODING_SCALE → 24-bit integer
 H_D_MAX: float = 20_000.0  # theoretical max J/m²/day
 
-# --- Temperature tile encoding ---
-# encoded = (temp_celsius + TEMP_OFFSET) * TEMP_ENCODING_SCALE
-# Range: -50 to +60 °C  →  0-11000, well within 24-bit RGB max (16.7M)
-TEMP_ENCODING_SCALE: int = 100
+ENCODING_SCALE_BIN: int = 3
+TEMP_ENCODING_SCALE_BIN: int = 100
 TEMP_OFFSET: float = 50.0
 
 # --- Data paths ---

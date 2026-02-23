@@ -1,7 +1,7 @@
 import { addProtocol } from "maplibre-gl";
 import type { ModelParams } from "../types";
 import { minutesToColor } from "./colorScale";
-import { computeMinutes, decodeRGB } from "./vitd";
+import { computeMinutes, decodeUint16Tile } from "./vitd";
 import { weatherExposure } from "./weather";
 
 const TILE_SIZE = 256;
@@ -18,31 +18,15 @@ function cacheKey(month: number, z: number, x: number, y: number): string {
   return `${month}/${z}/${x}/${y}`;
 }
 
-async function decodeTilePng(
+async function fetchTileBin(
   url: string,
   encodingScale: number,
   encodingOffset: number,
 ): Promise<Float32Array> {
   const resp = await fetch(url);
   if (!resp.ok) throw new Error(`Tile fetch failed: ${resp.status}`);
-
-  const blob = await resp.blob();
-  const bitmap = await createImageBitmap(blob);
-
-  const canvas = new OffscreenCanvas(TILE_SIZE, TILE_SIZE);
-  const ctx = canvas.getContext("2d")!;
-  ctx.drawImage(bitmap, 0, 0);
-  const imageData = ctx.getImageData(0, 0, TILE_SIZE, TILE_SIZE);
-  const pixels = imageData.data;
-
-  const count = TILE_SIZE * TILE_SIZE;
-  const values = new Float32Array(count);
-  for (let i = 0; i < count; i++) {
-    const off = i * 4;
-    const raw = decodeRGB(pixels[off], pixels[off + 1], pixels[off + 2], pixels[off + 3], encodingScale);
-    values[i] = isNaN(raw) ? NaN : raw - encodingOffset;
-  }
-  return values;
+  const buf = await resp.arrayBuffer();
+  return decodeUint16Tile(buf, encodingScale, encodingOffset);
 }
 
 async function fetchUV(
@@ -56,8 +40,8 @@ async function fetchUV(
   const cached = uvCache.get(key);
   if (cached) return cached;
 
-  const url = `/api/base_tiles/${z}/${x}/${y}.png?month=${month}`;
-  const hd = await decodeTilePng(url, encodingScale, 0);
+  const url = `/api/base_tiles/${z}/${x}/${y}.bin?month=${month}`;
+  const hd = await fetchTileBin(url, encodingScale, 0);
   uvCache.set(key, hd);
   return hd;
 }
@@ -74,8 +58,8 @@ async function fetchTemp(
   const cached = tempCache.get(key);
   if (cached) return cached;
 
-  const url = `/api/temp_tiles/${z}/${x}/${y}.png?month=${month}`;
-  const temps = await decodeTilePng(url, encodingScale, encodingOffset);
+  const url = `/api/temp_tiles/${z}/${x}/${y}.bin?month=${month}`;
+  const temps = await fetchTileBin(url, encodingScale, encodingOffset);
   tempCache.set(key, temps);
   return temps;
 }

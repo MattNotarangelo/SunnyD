@@ -10,9 +10,9 @@ daily vitamin D intake, by location, month, skin type, and skin exposure.
 ## Architecture
 
 The backend serves **numeric UV dose data** (`H_D_month` in J/m²/day) and
-**temperature data** (°C) as RGB-encoded raster tiles. All skin-type and
-coverage calculations are performed client-side so that slider changes are
-instant (no tile reload except when the month changes).
+**temperature data** (°C) as Brotli-compressed uint16 raster tiles. All
+skin-type and coverage calculations are performed client-side so that slider
+changes are instant (no tile reload except when the month changes).
 
 A "Weather Adjusted" mode uses monthly temperature climatology to
 automatically set skin coverage based on estimated local temperature.
@@ -24,27 +24,26 @@ automatically set skin coverage based on estimated local temperature.
 | `GET /api/health`                                    | Service health check                    |
 | `GET /api/methodology`                               | All model equations, constants, presets |
 | `GET /api/estimate?lat&lon&month&skin_type&coverage` | Point estimate (for tooltip validation) |
-| `GET /api/base_tiles/{z}/{x}/{y}.png?month=`         | Numeric RGB-encoded UV base tile        |
-| `GET /api/temp_tiles/{z}/{x}/{y}.png?month=`         | Numeric RGB-encoded temperature tile    |
+| `GET /api/base_tiles/{z}/{x}/{y}.bin?month=`         | Brotli uint16 UV base tile              |
+| `GET /api/temp_tiles/{z}/{x}/{y}.bin?month=`         | Brotli uint16 temperature tile          |
 
 ### Tile encoding
 
-Each pixel packs a float value into 24-bit RGB:
+Each pixel is a little-endian uint16, served with `Content-Encoding: br`
+(Brotli). The browser decompresses transparently; JavaScript reads a raw
+`Uint16Array`.
 
 ```
 encoded = round((value + offset) * scale)
-R = (encoded >> 16) & 0xFF
-G = (encoded >>  8) & 0xFF
-B =  encoded        & 0xFF
-A = 255 (valid) | 0 (no data)
+0xFFFF = no-data / NaN
 ```
 
-| Tile type   | Scale | Offset |
-| ----------- | ----- | ------ |
-| UV dose     | 100   | 0      |
-| Temperature | 100   | 50     |
+| Tile type   | Scale | Offset | Encoded range |
+| ----------- | ----- | ------ | ------------- |
+| UV dose     | 3     | 0      | 0 – 60,000    |
+| Temperature | 100   | 50     | 0 – 11,000    |
 
-Frontend decodes: `value = (R * 65536 + G * 256 + B) / scale - offset`
+Frontend decodes: `value = uint16_value / scale - offset`
 
 ## Data sources
 
@@ -119,7 +118,7 @@ cd frontend && npm install && npm run dev
 
 The API will be available at `http://localhost:8000`.
 Interactive docs at `http://localhost:8000/docs`.
-Frontend dev server at `http://localhost:5173`.
+Frontend dev server at `http://localhost:3000`.
 
 ### Docker
 

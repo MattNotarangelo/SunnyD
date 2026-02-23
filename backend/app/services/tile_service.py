@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-import io
 import logging
 import math
 from pathlib import Path
 
 import numpy as np
 from numpy.typing import NDArray
-from PIL import Image
 
-from ..config import ENCODING_SCALE, MODEL_VERSION, TILE_SIZE
+from ..config import ENCODING_SCALE_BIN, MODEL_VERSION, TILE_SIZE
 from .provider_base import ProviderBase
 
 DEFAULT_OFFSET = 0.0
+
+NODATA_U16 = 0xFFFF
 
 log = logging.getLogger(__name__)
 
@@ -43,46 +43,24 @@ def tile_lon_array(z: int, x: int, width: int) -> NDArray[np.float32]:
     return np.linspace(lon_min, lon_max, width, dtype=np.float32)
 
 
-def encode_rgb(
+def encode_uint16(
     data: NDArray[np.float32],
-    scale: int = ENCODING_SCALE,
+    scale: int = ENCODING_SCALE_BIN,
     offset: float = DEFAULT_OFFSET,
-) -> NDArray[np.uint8]:
-    """Encode a float32 (H, W) array into an (H, W, 4) RGBA image.
+) -> NDArray[np.uint16]:
+    """Encode a float32 (H, W) array into a flat uint16 array.
 
     Encoding:
         value_encoded = round((value + offset) * scale)
-        R = (value_encoded >> 16) & 0xFF
-        G = (value_encoded >> 8)  & 0xFF
-        B =  value_encoded        & 0xFF
-        A = 255 for valid pixels, 0 for NaN / no-data
+        Clamped to [0, 65534].  65535 (0xFFFF) = NaN / no-data.
     """
-    h, w = data.shape
-    rgba = np.zeros((h, w, 4), dtype=np.uint8)
-
-    valid = ~np.isnan(data)
-    vals = np.clip(np.round((data[valid] + offset) * scale), 0, 0xFFFFFF).astype(np.uint32)
-
-    rgba[valid, 0] = ((vals >> 16) & 0xFF).astype(np.uint8)
-    rgba[valid, 1] = ((vals >> 8) & 0xFF).astype(np.uint8)
-    rgba[valid, 2] = (vals & 0xFF).astype(np.uint8)
-    rgba[valid, 3] = 255
-
-    return rgba
-
-
-def decode_rgb(rgba: NDArray[np.uint8]) -> NDArray[np.float32]:
-    """Reverse of encode_rgb — used for testing round-trip accuracy."""
-    r = rgba[..., 0].astype(np.uint32)
-    g = rgba[..., 1].astype(np.uint32)
-    b = rgba[..., 2].astype(np.uint32)
-    a = rgba[..., 3]
-
-    raw = (r << 16) | (g << 8) | b
-    result = raw.astype(np.float32) / ENCODING_SCALE
-
-    result[a == 0] = np.float32("nan")
-    return result.astype(np.float32)
+    flat = data.ravel()
+    out = np.full(flat.shape, NODATA_U16, dtype=np.uint16)
+    valid = ~np.isnan(flat)
+    out[valid] = np.clip(
+        np.round((flat[valid] + offset) * scale), 0, NODATA_U16 - 1
+    ).astype(np.uint16)
+    return out
 
 
 class TileService:
@@ -92,7 +70,7 @@ class TileService:
         self,
         provider: ProviderBase,
         cache_dir: Path,
-        encoding_scale: int = ENCODING_SCALE,
+        encoding_scale: int = ENCODING_SCALE_BIN,
         encoding_offset: float = DEFAULT_OFFSET,
     ) -> None:
         self._provider = provider
@@ -103,25 +81,24 @@ class TileService:
         log.info("Tile cache directory: %s", self._cache_root)
 
     def _cache_path(self, month: int, z: int, x: int, y: int) -> Path:
-        return self._cache_root / str(month) / str(z) / str(x) / f"{y}.png"
+        return self._cache_root / str(month) / str(z) / str(x) / f"{y}.bin"
 
-    def get_tile_png(self, month: int, z: int, x: int, y: int) -> bytes:
-        """Return PNG bytes for the requested tile, using disk cache."""
+    def _get_tile_data(self, month: int, z: int, x: int, y: int) -> NDArray[np.float32]:
+        target_lats = mercator_lat_array(z, y, TILE_SIZE)
+        target_lons = tile_lon_array(z, x, TILE_SIZE)
+        return self._provider.get_tile_data(month, target_lats, target_lons)
+
+    def get_tile_bin(self, month: int, z: int, x: int, y: int) -> bytes:
+        """Return raw uint16 little-endian bytes for the requested tile."""
         cached = self._cache_path(month, z, x, y)
         if cached.exists():
             return cached.read_bytes()
 
-        target_lats = mercator_lat_array(z, y, TILE_SIZE)
-        target_lons = tile_lon_array(z, x, TILE_SIZE)
-        data = self._provider.get_tile_data(month, target_lats, target_lons)
-        rgba = encode_rgb(data, self._encoding_scale, self._encoding_offset)
-
-        img = Image.fromarray(rgba)
-        buf = io.BytesIO()
-        img.save(buf, format="PNG", compress_level=6)
-        png_bytes = buf.getvalue()
+        data = self._get_tile_data(month, z, x, y)
+        u16 = encode_uint16(data, self._encoding_scale, self._encoding_offset)
+        raw_bytes = u16.tobytes()
 
         cached.parent.mkdir(parents=True, exist_ok=True)
-        cached.write_bytes(png_bytes)
+        cached.write_bytes(raw_bytes)
 
-        return png_bytes
+        return raw_bytes

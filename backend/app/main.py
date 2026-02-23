@@ -11,9 +11,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .config import (
+    ENCODING_SCALE_BIN,
     MODEL_VERSION,
     NETCDF_FILENAME,
-    TEMP_ENCODING_SCALE,
+    TEMP_ENCODING_SCALE_BIN,
     TEMP_NETCDF_FILENAME,
     TEMP_OFFSET,
 )
@@ -45,7 +46,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         )
     provider = ProviderTEMIS(nc_path)
     estimate.init_provider(provider)
-    tile_svc = TileService(provider, CACHE_DIR / "uv")
+    tile_svc = TileService(provider, CACHE_DIR / "uv", encoding_scale=ENCODING_SCALE_BIN)
     tiles.init_tile_service(tile_svc)
 
     # Temperature data
@@ -62,7 +63,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         temp_tile_svc = TileService(
             temp_provider,
             CACHE_DIR / "temp",
-            encoding_scale=TEMP_ENCODING_SCALE,
+            encoding_scale=TEMP_ENCODING_SCALE_BIN,
             encoding_offset=TEMP_OFFSET,
         )
         tiles.init_temp_tile_service(temp_tile_svc)

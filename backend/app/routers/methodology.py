@@ -4,13 +4,13 @@ from fastapi import APIRouter
 
 from ..config import (
     DISCLAIMER,
-    ENCODING_SCALE,
+    ENCODING_SCALE_BIN,
     EXPOSURE_PRESETS,
     FITZPATRICK,
     H_D_MAX,
     K_MINUTES,
     MODEL_VERSION,
-    TEMP_ENCODING_SCALE,
+    TEMP_ENCODING_SCALE_BIN,
     TEMP_OFFSET,
 )
 from ..models import MethodologyResponse
@@ -34,9 +34,9 @@ def methodology() -> MethodologyResponse:
         fitzpatrick_table=FITZPATRICK,
         exposure_presets=EXPOSURE_PRESETS,
         encoding={
-            "scale": ENCODING_SCALE,
+            "scale": ENCODING_SCALE_BIN,
             "H_D_max": H_D_MAX,
-            "temp_encoding_scale": TEMP_ENCODING_SCALE,
+            "temp_encoding_scale": TEMP_ENCODING_SCALE_BIN,
             "temp_offset": TEMP_OFFSET,
         },
         disclaimer=DISCLAIMER,

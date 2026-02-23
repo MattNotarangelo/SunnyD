@@ -3,52 +3,52 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from app.config import ENCODING_SCALE
+from app.config import ENCODING_SCALE_BIN
 from app.services.tile_service import (
-    decode_rgb,
-    encode_rgb,
+    NODATA_U16,
+    encode_uint16,
     mercator_lat_array,
     tile_lon_array,
 )
 
 
-class TestRGBEncoding:
-    """Round-trip accuracy of the 24-bit encoding."""
+class TestUint16Encoding:
+    """Round-trip accuracy of the uint16 encoding."""
 
     def test_roundtrip_simple_values(self) -> None:
         data = np.array([[0.0, 1.0, 100.0], [5000.0, 12000.0, 20000.0]], dtype=np.float32)
-        rgba = encode_rgb(data)
-        recovered = decode_rgb(rgba)
-        np.testing.assert_allclose(recovered, data, atol=1.0 / ENCODING_SCALE)
+        u16 = encode_uint16(data, scale=ENCODING_SCALE_BIN)
+        recovered = np.where(
+            u16 == NODATA_U16, np.nan, u16.astype(np.float32) / ENCODING_SCALE_BIN
+        ).reshape(data.shape)
+        np.testing.assert_allclose(recovered, data, atol=1.0 / ENCODING_SCALE_BIN)
 
     def test_nan_preserved(self) -> None:
         data = np.array([[np.nan, 500.0], [1000.0, np.nan]], dtype=np.float32)
-        rgba = encode_rgb(data)
-        recovered = decode_rgb(rgba)
-
-        assert np.isnan(recovered[0, 0])
-        assert np.isnan(recovered[1, 1])
-        assert recovered[0, 1] == pytest.approx(500.0, abs=1.0 / ENCODING_SCALE)
-        assert recovered[1, 0] == pytest.approx(1000.0, abs=1.0 / ENCODING_SCALE)
-
-    def test_alpha_channel(self) -> None:
-        data = np.array([[np.nan, 100.0]], dtype=np.float32)
-        rgba = encode_rgb(data)
-        assert rgba[0, 0, 3] == 0  # NaN -> transparent
-        assert rgba[0, 1, 3] == 255  # valid -> opaque
+        u16 = encode_uint16(data, scale=ENCODING_SCALE_BIN)
+        assert u16[0] == NODATA_U16
+        assert u16[3] == NODATA_U16
+        assert u16[1] != NODATA_U16
+        assert u16[2] != NODATA_U16
+        assert u16[1] / ENCODING_SCALE_BIN == pytest.approx(500.0, abs=1.0 / ENCODING_SCALE_BIN)
+        assert u16[2] / ENCODING_SCALE_BIN == pytest.approx(1000.0, abs=1.0 / ENCODING_SCALE_BIN)
 
     def test_zero_encoded_correctly(self) -> None:
         data = np.array([[0.0]], dtype=np.float32)
-        rgba = encode_rgb(data)
-        assert tuple(rgba[0, 0]) == (0, 0, 0, 255)
-        recovered = decode_rgb(rgba)
-        assert recovered[0, 0] == pytest.approx(0.0)
+        u16 = encode_uint16(data, scale=ENCODING_SCALE_BIN)
+        assert u16[0] == 0
+        assert u16[0] / ENCODING_SCALE_BIN == pytest.approx(0.0)
 
-    def test_large_value_clipped(self) -> None:
+    def test_large_value_clamped(self) -> None:
         data = np.array([[200_000.0]], dtype=np.float32)
-        rgba = encode_rgb(data)
-        recovered = decode_rgb(rgba)
-        assert recovered[0, 0] <= (0xFFFFFF / ENCODING_SCALE)
+        u16 = encode_uint16(data, scale=ENCODING_SCALE_BIN)
+        assert u16[0] == NODATA_U16 - 1
+
+    def test_offset(self) -> None:
+        data = np.array([[-50.0, 0.0, 60.0]], dtype=np.float32)
+        u16 = encode_uint16(data, scale=100, offset=50.0)
+        recovered = u16.astype(np.float32) / 100 - 50.0
+        np.testing.assert_allclose(recovered, data.ravel(), atol=0.01)
 
 
 class TestMercatorLatArray:
