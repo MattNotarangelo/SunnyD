@@ -2,7 +2,7 @@
 """Build temperature_monthly.nc from ERA5 monthly-averaged 2m temperature.
 
 Processes a pre-downloaded ERA5 NetCDF file into a compact 12-month
-climatology for the SunnyD tile server.
+climatology for SunnyD.
 
 Source: Copernicus Climate Data Store — ERA5 monthly averaged reanalysis
         on single levels, variable "2m temperature".
@@ -15,7 +15,7 @@ Prerequisites:
     and place it in the repository root. See README for instructions.
 
 Usage:
-    python scripts/build_temperature_nc.py [input_file]
+    python scripts/2_build_temperature_nc.py [input_file]
 """
 
 from __future__ import annotations

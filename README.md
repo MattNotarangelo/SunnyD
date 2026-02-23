@@ -9,39 +9,35 @@ daily vitamin D intake, by location, month, skin type, and skin exposure.
 
 ## Architecture
 
-The backend serves **numeric UV dose data** (`H_D_month` in J/m²/day) and
-**temperature data** (°C) as Brotli-compressed uint16 raster tiles. All
-skin-type and coverage calculations are performed client-side so that slider
-changes are instant (no tile reload except when the month changes).
+SunnyD is a fully static React app — no backend server at runtime. Source
+climate data (UV dose + temperature) is pre-processed into compact binary grid
+files that the browser loads on demand (~1-2 MB per month, Brotli-compressed).
+
+All computation happens client-side:
+- **Tile rendering**: the browser samples the in-memory grids into 256×256
+  tiles using Mercator projection, colorizes via a pre-computed LUT, and
+  encodes as raw PNG for MapLibre.
+- **Point estimates**: on map click, the grid is sampled at the clicked
+  lat/lon and minutes are computed with `(K_minutes * k_skin) / (H_D_kJ * f_cover)`.
+- **Supplement advice**: all 12 months are checked to find months where
+  required sun exposure exceeds 120 minutes.
 
 A "Weather Adjusted" mode uses monthly temperature climatology to
 automatically set skin coverage based on estimated local temperature.
 
-### Endpoints
+### Grid encoding
 
-| Route                                                | Description                             |
-| ---------------------------------------------------- | --------------------------------------- |
-| `GET /api/health`                                    | Service health check                    |
-| `GET /api/methodology`                               | All model equations, constants, presets |
-| `GET /api/estimate?lat&lon&month&skin_type&coverage` | Point estimate (for tooltip validation) |
-| `GET /api/base_tiles/{z}/{x}/{y}.bin?month=`         | Brotli uint16 UV base tile              |
-| `GET /api/temp_tiles/{z}/{x}/{y}.bin?month=`         | Brotli uint16 temperature tile          |
-
-### Tile encoding
-
-Each pixel is a little-endian uint16, served with `Content-Encoding: br`
-(Brotli). The browser decompresses transparently; JavaScript reads a raw
-`Uint16Array`.
+Each grid file has a 20-byte header followed by `nlat × nlon` uint16 values:
 
 ```
 encoded = round((value + offset) * scale)
 0xFFFF = no-data / NaN
 ```
 
-| Tile type   | Scale | Offset | Encoded range |
+| Grid type   | Scale | Offset | Encoded range |
 | ----------- | ----- | ------ | ------------- |
-| UV dose     | 3     | 0      | 0 – 60,000    |
-| Temperature | 100   | 50     | 0 – 11,000    |
+| UV dose     | 3     | 0      | 0 – 60,000   |
+| Temperature | 100   | 50     | 0 – 11,000   |
 
 Frontend decodes: `value = uint16_value / scale - offset`
 
@@ -59,10 +55,6 @@ Download: <https://www.temis.nl/uvradiation/v2.0/nc/clim/uvdvcclim_world.nc>
 > Dataset. Royal Netherlands Meteorological Institute (KNMI).
 > [doi.org/10.21944/temis-uv-oper-v2](https://doi.org/10.21944/temis-uv-oper-v2)
 
-1. Download the daily climatology NetCDF (`uvdvcclim_world.nc`) from the link above.
-2. Run `data.ipynb` to aggregate daily data into monthly means.
-3. The output `uvdvcclim_world_monthly.nc` must be placed in the repository root.
-
 ### Temperature
 
 **ERA5 monthly averaged data on single levels from 1940 to present** —
@@ -78,69 +70,56 @@ Download: <https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-lev
 > Copernicus Climate Change Service (C3S) Climate Data Store (CDS).
 > [doi:10.24381/cds.f17050d7](https://doi.org/10.24381/cds.f17050d7)
 
-1. Register (free) at [cds.climate.copernicus.eu](https://cds.climate.copernicus.eu/)
-2. Download "ERA5 monthly averaged data on single levels" → Product type:
-   Monthly averaged reanalysis → Variable: 2m temperature → Years: 2016-2025
-   → All months → Format: NetCDF
-3. Place the file in the repository root
-4. Run `python scripts/build_temperature_nc.py` to compute the 12-month
-   climatology as `temperature_monthly.nc`
-
-The dataset covers both land and ocean. The frontend defaults to 25% skin
-coverage for any remaining NaN pixels at grid edges.
-
 ## Setup
 
 ### Prerequisites
 
-- Python 3.12+
+- Python 3.12+ (for data pipeline only)
 - Node.js 22+
-- The UV monthly NetCDF file (see above)
-- Optionally, the temperature NetCDF for weather-adjusted mode
 
-### Environment variables
+### Data pipeline
 
-| Variable           | Default               | Description                       |
-| ------------------ | --------------------- | --------------------------------- |
-| `SUNNYD_DATA_DIR`  | Repository root       | Directory containing NetCDF files |
-| `SUNNYD_CACHE_DIR` | `backend/data_cache/` | Directory for tile cache          |
+The three numbered scripts in `scripts/` prepare the data:
+
+```bash
+pip install -r requirements.txt
+
+# 1. Download TEMIS UV climatology and aggregate daily → monthly
+python scripts/1_download_uv.py
+
+# 2. Process ERA5 temperature into 12-month climatology
+#    (requires manual download from CDS — see Data sources above)
+python scripts/2_build_temperature_nc.py
+
+# 3. Convert NetCDF files into per-month binary grids for the frontend
+python scripts/3_build_grids.py
+```
+
+After step 3, `public/data/` will contain 24 `.bin` files (~2 MB each).
 
 ### Local development
 
 ```bash
-# Backend
-pip install -r requirements.txt
-make dev
-
-# Frontend (separate terminal)
-cd frontend && npm install && npm run dev
+npm install
+npm run dev
 ```
 
-The API will be available at `http://localhost:8000`.
-Interactive docs at `http://localhost:8000/docs`.
-Frontend dev server at `http://localhost:3000`.
+The app will be available at `http://localhost:3000`.
 
-### Docker
+### Production build
 
 ```bash
-make docker-up
+npm run build
 ```
 
-The frontend is served at `http://localhost:3000` with nginx proxying
-`/api/` requests to the backend.
-
-### Running tests
-
-```bash
-make test
-```
+Output is in `dist/` — deploy the entire directory to any static host
+(Cloudflare Pages, Netlify, Vercel, etc.).
 
 ### Linting
 
 ```bash
-make lint          # backend (ruff)
-make lint-frontend # frontend (tsc)
-make format        # auto-format backend
+npx tsc --noEmit   # type check
+npm run lint        # eslint
 ```
 
 ## Model

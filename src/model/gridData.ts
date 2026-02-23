@@ -60,7 +60,7 @@ async function fetchMonthGrid(layer: Layer, month: number): Promise<MonthGrid> {
 
   let promise = inflight[layer].get(month);
   if (!promise) {
-    promise = fetch(`/data/${layer}_${month}.bin`)
+    promise = fetch(`${import.meta.env.BASE_URL}data/${layer}_${month}.bin`)
       .then(async (resp) => {
         if (!resp.ok) throw new Error(`Grid fetch failed: ${layer}_${month}.bin (${resp.status})`);
         const buf = await resp.arrayBuffer();
@@ -116,7 +116,7 @@ export async function loadAllMonths(): Promise<void> {
   await Promise.all(promises);
 }
 
-// ── Mercator helpers (ported from backend tile_service.py) ───────────
+// ── Mercator helpers ─────────────────────────────────────────────────
 
 function mercatorLatArray(z: number, y: number, height: number): Float32Array {
   const n = 2 ** z;

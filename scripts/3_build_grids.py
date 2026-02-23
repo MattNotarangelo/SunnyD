@@ -24,7 +24,7 @@ Encoding:
   Temp: encoded = round((celsius + 50) * 100)
 
 Usage:
-    python scripts/build_grids.py
+    python scripts/3_build_grids.py
 """
 
 from __future__ import annotations
@@ -149,7 +149,7 @@ def main() -> None:
     build_uv()
     print()
     build_temp()
-    print("\nDone! Grid files are in frontend/public/data/")
+    print(f"\nDone! Grid files are in {OUT_DIR.relative_to(PROJECT_ROOT)}/")
 
 
 if __name__ == "__main__":
