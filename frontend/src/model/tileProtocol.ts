@@ -8,8 +8,34 @@ const TILE_SIZE = 256;
 const PIXEL_COUNT = TILE_SIZE * TILE_SIZE;
 const NODATA_U16 = 0xFFFF;
 
-const uvCache = new Map<string, Uint16Array>();
-const tempCache = new Map<string, Uint16Array>();
+const MAX_CACHE_ENTRIES = 512; // ~64 MB per cache (512 × 128 KB)
+
+class TileCache {
+  private map = new Map<string, Uint16Array>();
+  private keys: string[] = [];
+
+  get(key: string): Uint16Array | undefined {
+    return this.map.get(key);
+  }
+
+  set(key: string, value: Uint16Array) {
+    if (this.map.has(key)) return;
+    if (this.keys.length >= MAX_CACHE_ENTRIES) {
+      const evict = this.keys.shift()!;
+      this.map.delete(evict);
+    }
+    this.keys.push(key);
+    this.map.set(key, value);
+  }
+
+  clear() {
+    this.map.clear();
+    this.keys.length = 0;
+  }
+}
+
+const uvCache = new TileCache();
+const tempCache = new TileCache();
 
 let currentParams: ModelParams | null = null;
 
@@ -103,12 +129,10 @@ export function registerProtocol() {
     const { month, z, x, y } = parseTileUrl(params.url);
     if (!currentParams) throw new Error("Model params not yet initialized");
 
-    const uvU16 = await fetchUV(month, z, x, y);
-
-    let tempU16: Uint16Array | null = null;
-    if (currentParams.weatherAdjusted) {
-      tempU16 = await fetchTemp(month, z, x, y);
-    }
+    const [uvU16, tempU16] = await Promise.all([
+      fetchUV(month, z, x, y),
+      currentParams.weatherAdjusted ? fetchTemp(month, z, x, y) : null,
+    ]);
 
     return { data: colorize(uvU16, tempU16, currentParams) };
   });
