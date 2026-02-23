@@ -215,7 +215,6 @@ Complete_TAVG_*.nc
 # SunnyD tile cache
 backend/data_cache/
 temperature*
-wc2.1*
 
 # Pre-generated grid data (built from NetCDF via scripts/build_grids.py)
 frontend/public/data/*.bin
