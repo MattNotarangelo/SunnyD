@@ -16,9 +16,6 @@ NODATA_U16 = 0xFFFF
 
 log = logging.getLogger(__name__)
 
-# Web Mercator bounds (latitude clamped to ~±85.051°)
-MAX_LAT = 85.0511287798
-
 
 def mercator_lat_array(z: int, y: int, height: int) -> NDArray[np.float32]:
     """Compute per-row latitudes that follow Web Mercator projection.
