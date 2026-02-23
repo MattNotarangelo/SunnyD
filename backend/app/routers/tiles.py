@@ -11,8 +11,6 @@ router = APIRouter(prefix="/api", tags=["tiles"])
 _tile_service: TileService | None = None
 _temp_tile_service: TileService | None = None
 
-_brotli_cache: dict[str, bytes] = {}
-
 
 def init_tile_service(service: TileService) -> None:
     global _tile_service  # noqa: PLW0603
@@ -32,37 +30,16 @@ def _validate_tile(z: int, x: int, y: int) -> None:
         raise HTTPException(status_code=400, detail="Tile coordinates out of range")
 
 
-def _accepts_brotli(request: Request) -> bool:
-    accept = request.headers.get("accept-encoding", "")
-    return "br" in accept
-
-
-def _brotli_compress(raw: bytes, cache_key: str) -> bytes:
-    cached = _brotli_cache.get(cache_key)
-    if cached is not None:
-        return cached
-    compressed = brotli.compress(raw, quality=6)
-    _brotli_cache[cache_key] = compressed
-    return compressed
-
-
-def _bin_response(raw: bytes, request: Request, cache_key: str) -> Response:
+def _bin_response(raw: bytes, request: Request) -> Response:
     """Return raw uint16 bytes, Brotli-compressed if the client supports it."""
-    if _accepts_brotli(request):
-        body = _brotli_compress(raw, cache_key)
-        return Response(
-            content=body,
-            media_type="application/octet-stream",
-            headers={
-                "Content-Encoding": "br",
-                "Cache-Control": "public, max-age=86400",
-            },
-        )
-    return Response(
-        content=raw,
-        media_type="application/octet-stream",
-        headers={"Cache-Control": "public, max-age=86400"},
-    )
+    headers = {"Cache-Control": "public, max-age=86400"}
+    accept = request.headers.get("accept-encoding", "")
+    if "br" in accept:
+        body = brotli.compress(raw, quality=6)
+        headers["Content-Encoding"] = "br"
+    else:
+        body = raw
+    return Response(content=body, media_type="application/octet-stream", headers=headers)
 
 
 @router.get("/base_tiles/{z}/{x}/{y}.bin")
@@ -78,7 +55,7 @@ def base_tile_bin(
     _validate_tile(z, x, y)
 
     raw = _tile_service.get_tile_bin(month, z, x, y)
-    return _bin_response(raw, request, f"uv/{month}/{z}/{x}/{y}")
+    return _bin_response(raw, request)
 
 
 @router.get("/temp_tiles/{z}/{x}/{y}.bin")
@@ -94,4 +71,4 @@ def temp_tile_bin(
     _validate_tile(z, x, y)
 
     raw = _temp_tile_service.get_tile_bin(month, z, x, y)
-    return _bin_response(raw, request, f"temp/{month}/{z}/{x}/{y}")
+    return _bin_response(raw, request)
