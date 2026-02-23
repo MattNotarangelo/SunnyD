@@ -1,6 +1,7 @@
 # SunnyD — Global Vitamin D Sun Exposure Estimator 🌞
 
 Estimates how many minutes of midday sun are required to synthesise a target daily vitamin D intake, by location, month, skin type, and skin exposure.
+
 ![SunnyD screenshot](public/screenshot.jpg)
 
 > **This is an EDUCATIONAL MODEL.**
@@ -11,7 +12,7 @@ Estimates how many minutes of midday sun are required to synthesise a target dai
 
 SunnyD is a fully static React app — no backend server at runtime. Source
 climate data (UV dose + temperature) is pre-processed into compact binary grid
-files that the browser loads on demand (~1-2 MB per month, Brotli-compressed).
+files that the browser loads on demand (~2 MB per month).
 
 All computation happens client-side:
 
@@ -130,43 +131,35 @@ energy reported by the TEMIS satellite.
 
 ### Variables
 
-| Symbol      | Description                                                          |
-| ----------- | -------------------------------------------------------------------- |
-| `H_D`       | Daily Vitamin-D UV dose from TEMIS (kJ/m²)                           |
-| `BSA`       | Total body surface area (≈ 1.8 m²)                                   |
-| `f_exposed` | Fraction of skin exposed (0–1)                                       |
-| `C_geo`     | Geometry factor = 0.33 (only ≈⅓ of exposed skin faces the sun)       |
-| `T_peak`    | Solar window = 240 min (dose delivered over ~4 h midday)             |
-| `E_target`  | 0.05 kJ (energy needed for 1,000 IU, based on 0.25 MED over 25% BSA) |
-| `M_fitz`    | Fitzpatrick skin-type multiplier (see below)                         |
+| Symbol               | Description                                                               |
+| -------------------- | ------------------------------------------------------------------------- |
+| $H_D$                | Daily Vitamin-D UV dose from TEMIS (kJ/m²)                                |
+| $BSA$                | Total body surface area ($\approx 1.8$ m²)                                |
+| $f_{\text{exposed}}$ | Fraction of skin exposed (0–1)                                            |
+| $C_{\text{geo}}$     | Geometry factor $= 0.33$ (only $\approx$ ⅓ of exposed skin faces the sun) |
+| $T_{\text{peak}}$    | Solar window $= 240$ min (dose delivered over ~4 h midday)                |
+| $E_{\text{target}}$  | $0.05$ kJ (energy needed for 1,000 IU, based on 0.25 MED over 25% BSA)    |
+| $M_{\text{fitz}}$    | Fitzpatrick skin-type multiplier (see below)                              |
 
 ### Equations
 
 **Energy rate hitting the skin (kJ/min):**
 
-```
-Rate = (H_D / T_peak) × (BSA × f_exposed × C_geo)
-```
+$$\text{Rate} = \frac{H_D}{T_{\text{peak}}} \times BSA \times f_{\text{exposed}} \times C_{\text{geo}}$$
 
 **Time to reach target energy:**
 
-```
-Time (min) = (E_target × M_fitz) / Rate
-```
+$$t\ (\text{min}) = \frac{E_{\text{target}} \times M_{\text{fitz}}}{\text{Rate}}$$
 
 **Combined formula (with constants substituted):**
 
-```
-Time = (0.05 × 240 × M_fitz) / (H_D × 1.8 × f_exposed × 0.33)
-```
+$$t = \frac{0.05 \times 240 \times M_{\text{fitz}}}{H_D \times 1.8 \times f_{\text{exposed}} \times 0.33}$$
 
-Which simplifies to `K_minutes = 20.2`:
+Which simplifies to $K = 20.2$:
 
-```
-Time = (K_minutes × M_fitz) / (H_D × f_exposed)
-```
+$$\boxed{t = \frac{K \times M_{\text{fitz}}}{H_D \times f_{\text{exposed}}}}$$
 
-If `H_D ≤ 0` or `f_exposed ≤ 0`, the result is **Infinity** (insufficient UV).
+If $H_D \leq 0$ or $f_{\text{exposed}} \leq 0$, the result is $\infty$ (insufficient UV).
 
 ### Fitzpatrick skin-type multipliers
 
