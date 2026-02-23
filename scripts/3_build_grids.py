@@ -4,7 +4,7 @@
 Reads the preprocessed NetCDF datasets and writes per-month uint16 binary
 grids that the React app loads lazily at runtime.
 
-Output: frontend/public/data/uv_1.bin … uv_12.bin, temp_1.bin … temp_12.bin
+Output: public/data/uv_1.bin … uv_12.bin, temp_1.bin … temp_12.bin
         (24 files, ~2 MB each raw, ~1-2 MB Brotli per file)
 
 Binary format (little-endian):
@@ -37,7 +37,7 @@ import numpy as np
 import xarray as xr
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-OUT_DIR = PROJECT_ROOT / "frontend" / "public" / "data"
+OUT_DIR = PROJECT_ROOT / "public" / "data"
 
 UV_NC = PROJECT_ROOT / "uvdvcclim_world_monthly.nc"
 TEMP_NC = PROJECT_ROOT / "temperature_monthly.nc"

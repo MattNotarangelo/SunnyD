@@ -1,22 +1,13 @@
-.PHONY: dev build build-data test lint format
+.PHONY: dev build build-data lint
 
 dev:
-	cd frontend && npm run dev
+	npm run dev
 
 build-data:
-	python3 scripts/build_grids.py
+	python3 scripts/3_build_grids.py
 
 build: build-data
-	cd frontend && npm run build
-
-test:
-	cd backend && python -m pytest tests/ -v
+	npm run build
 
 lint:
-	cd backend && ruff check app/ tests/
-
-lint-frontend:
-	cd frontend && npx tsc --noEmit
-
-format:
-	cd backend && ruff format app/ tests/
+	npx tsc --noEmit
