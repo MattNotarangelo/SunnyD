@@ -28,6 +28,7 @@ export function ExposureSelector({ coverage, coveragePreset, presets, onChange }
       <div className="flex flex-col gap-1.5">
         <button
           onClick={() => onChange(0.25, "weather_adjusted")}
+          title="Estimates skin exposure from localised daily maximum temperature"
           className={`w-full py-1.5 px-3 rounded text-sm text-left transition-colors flex items-center ${
             coveragePreset === "weather_adjusted"
               ? "bg-amber-500 text-gray-900 font-medium"

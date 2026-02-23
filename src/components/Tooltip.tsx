@@ -94,18 +94,18 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
 
       <div className="mt-3 border-t border-gray-700 pt-2 flex flex-col gap-1">
         <Row
-          label="H_D_month"
+          label="Average UVB dose"
           value={r.intermediate.H_D_month.toFixed(1) + " J/m\u00b2/day"}
         />
         {r.intermediate.temperature !== null && (
           <Row
-            label="Temperature"
+            label="Average maximum temp"
             value={r.intermediate.temperature.toFixed(1) + " \u00b0C"}
           />
         )}
         {modelParams.weatherAdjusted && r.intermediate.temperature !== null && (
           <Row
-            label="Weather exposure"
+            label="Estimated skin exposure"
             value={(displayCover * 100).toFixed(0) + "%"}
           />
         )}
@@ -116,7 +116,7 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
             </p>
           ) : (
             <Row
-              label="Minutes required"
+              label="Exposure time required"
               value={
                 adjustedMinutes
                   ? (adjustedMinutes.minutes?.toFixed(1) ?? "\u2014") + " min"

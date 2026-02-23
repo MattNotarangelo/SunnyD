@@ -1,7 +1,7 @@
-# SunnyD — Global Vitamin D Sun Exposure Estimator
+# SunnyD — Global Vitamin D Sun Exposure Estimator 🌞
 
-Estimates how many minutes of midday sun are required to synthesise a target
-daily vitamin D intake, by location, month, skin type, and skin exposure.
+Estimates how many minutes of midday sun are required to synthesise a target daily vitamin D intake, by location, month, skin type, and skin exposure.
+![SunnyD screenshot](public/screenshot.jpg)
 
 > **This is an EDUCATIONAL MODEL.**
 > It is **not** medical advice.
@@ -14,6 +14,7 @@ climate data (UV dose + temperature) is pre-processed into compact binary grid
 files that the browser loads on demand (~1-2 MB per month, Brotli-compressed).
 
 All computation happens client-side:
+
 - **Tile rendering**: the browser samples the in-memory grids into 256×256
   tiles using Mercator projection, colorizes via a pre-computed LUT, and
   encodes as raw PNG for MapLibre.
@@ -36,14 +37,14 @@ encoded = round((value + offset) * scale)
 
 | Grid type   | Scale | Offset | Encoded range |
 | ----------- | ----- | ------ | ------------- |
-| UV dose     | 3     | 0      | 0 – 60,000   |
-| Temperature | 100   | 50     | 0 – 11,000   |
+| UV dose     | 3     | 0      | 0 – 60,000    |
+| Temperature | 100   | 50     | 0 – 11,000    |
 
 Frontend decodes: `value = uint16_value / scale - offset`
 
 ## Data sources
 
-### UV dose
+### UV dose (UVB)
 
 **TEMIS (KNMI) Vitamin-D-weighted UV Dose** — clear-sky climatology
 (2004-2020 monthly averages, data version 2.0), exported 21 Feb 2026.
@@ -124,23 +125,48 @@ npm run lint        # eslint
 
 ## Model
 
-### Equation
+The human body is treated as a 3D collector of the vitamin-D-weighted UV
+energy reported by the TEMIS satellite.
+
+### Variables
+
+| Symbol      | Description                                                          |
+| ----------- | -------------------------------------------------------------------- |
+| `H_D`       | Daily Vitamin-D UV dose from TEMIS (kJ/m²)                           |
+| `BSA`       | Total body surface area (≈ 1.8 m²)                                   |
+| `f_exposed` | Fraction of skin exposed (0–1)                                       |
+| `C_geo`     | Geometry factor = 0.33 (only ≈⅓ of exposed skin faces the sun)       |
+| `T_peak`    | Solar window = 240 min (dose delivered over ~4 h midday)             |
+| `E_target`  | 0.05 kJ (energy needed for 1,000 IU, based on 0.25 MED over 25% BSA) |
+| `M_fitz`    | Fitzpatrick skin-type multiplier (see below)                         |
+
+### Equations
+
+**Energy rate hitting the skin (kJ/min):**
 
 ```
-hd_kj   = H_D_month / 1000
-minutes = (K_minutes * k_skin) / (hd_kj * f_cover)
+Rate = (H_D / T_peak) × (BSA × f_exposed × C_geo)
 ```
 
-Where `K_minutes = 20.2` is the dose-time constant.
+**Time to reach target energy:**
 
-If `H_D_month <= 0` or `f_cover <= 0`, the result is **Infinity** (insufficient UV).
+```
+Time (min) = (E_target × M_fitz) / Rate
+```
 
-### Inputs
+**Combined formula (with constants substituted):**
 
-| Parameter | Description                        |
-| --------- | ---------------------------------- |
-| `f_cover` | Fraction of skin exposed (0-1)     |
-| `k_skin`  | Fitzpatrick multiplier (see below) |
+```
+Time = (0.05 × 240 × M_fitz) / (H_D × 1.8 × f_exposed × 0.33)
+```
+
+Which simplifies to `K_minutes = 20.2`:
+
+```
+Time = (K_minutes × M_fitz) / (H_D × f_exposed)
+```
+
+If `H_D ≤ 0` or `f_exposed ≤ 0`, the result is **Infinity** (insufficient UV).
 
 ### Fitzpatrick skin-type multipliers
 

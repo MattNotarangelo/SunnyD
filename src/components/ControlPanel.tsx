@@ -55,7 +55,7 @@ export function ControlPanel({
           <div>
             <h1 className="text-xl font-bold text-amber-400">SunnyD</h1>
             <p className="text-xs text-gray-400 mt-0.5">
-              Vitamin D Sun Exposure Estimator
+              How long in the sun for your daily Vitamin D?
             </p>
           </div>
           <button
