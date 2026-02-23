@@ -7,7 +7,7 @@ const DEFAULTS: AppState = {
   month: 7,
   skinType: 2,
   coverage: 0.25,
-  coveragePreset: "tshirt_shorts",
+  coveragePreset: "weather_adjusted",
 };
 
 function readURL(): Partial<AppState> {
