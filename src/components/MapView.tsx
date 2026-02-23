@@ -75,9 +75,14 @@ export function MapView({ month, modelParams, onMapClick }: Props) {
     });
   }, []);
 
-  // Re-render tiles when month or model params change
+  // Re-render tiles when month or model params change (debounced for fast slider dragging)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    updateTileSource();
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      updateTileSource();
+    }, 80);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [month, modelParams, updateTileSource]);
 
   // Initialize map once
