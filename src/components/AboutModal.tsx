@@ -20,7 +20,7 @@ export function AboutModal({ onClose, modelVersion }: Props) {
 
         <div className="space-y-3 text-sm text-gray-300">
           <p>
-            Estimates how many minutes of midday sun are needed to synthesise a target daily vitamin D intake, by
+            Estimates how many minutes of midday sun are needed to synthesise a target daily vitamin D (specifically D3) synthesis, by
             location, month, skin type, and exposed skin area.
           </p>
 
