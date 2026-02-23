@@ -42,4 +42,5 @@ era5_*.nc
 temperature*
 
 # Pre-generated grid data (built from NetCDF via scripts/3_build_grids.py)
-public/data/*.bin
+# Committed so Cloudflare Pages can deploy them directly.
+# public/data/*.bin
