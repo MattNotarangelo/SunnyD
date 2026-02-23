@@ -100,7 +100,7 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
         {r.intermediate.temperature !== null && (
           <Row
             label="Average maximum temp"
-            value={r.intermediate.temperature.toFixed(1) + " \u00b0C"}
+            value={(r.intermediate.temperature + 5).toFixed(1) + " \u00b0C"} // add 5°C to avoid under-estimating exposure from daily mean
           />
         )}
         {modelParams.weatherAdjusted && r.intermediate.temperature !== null && (
