@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Build static binary grid files for the SunnyD frontend.
 
-Reads the preprocessed NetCDF datasets and writes per-month uint16 binary
-grids that the React app loads lazily at runtime.
+Reads the preprocessed NetCDF datasets and writes per-month Brotli-compressed
+uint16 binary grids that the React app loads lazily at runtime.
 
 Output: public/data/uv_1.bin … uv_12.bin, temp_1.bin … temp_12.bin
-        (24 files, ~2 MB each raw, ~1-2 MB Brotli per file)
+        (24 Brotli-compressed files, served with Content-Encoding: br)
 
 Binary format (little-endian):
   Header (20 bytes):
@@ -32,6 +32,8 @@ from __future__ import annotations
 import struct
 import sys
 from pathlib import Path
+
+import brotli
 
 import numpy as np
 import xarray as xr
@@ -92,13 +94,12 @@ def build_uv() -> None:
         u16 = encode_uint16(arr, UV_SCALE)
         valid_count = int(np.sum(u16 != NODATA))
 
+        raw = header + u16.tobytes()
+        compressed = brotli.compress(raw, quality=9)
         path = OUT_DIR / f"uv_{m}.bin"
-        with open(path, "wb") as f:
-            f.write(header)
-            f.write(u16.tobytes())
+        path.write_bytes(compressed)
 
-        size_kb = path.stat().st_size / 1024
-        print(f"  uv_{m}.bin: {valid_count:,} valid px, {size_kb:.0f} KB")
+        print(f"  uv_{m}.bin: {valid_count:,} valid px, {len(raw)/1024:.0f} KB → {len(compressed)/1024:.0f} KB")
 
     ds.close()
 
@@ -125,13 +126,12 @@ def build_temp() -> None:
         u16 = encode_uint16(arr, TEMP_SCALE, TEMP_OFFSET)
         valid_count = int(np.sum(u16 != NODATA))
 
+        raw = header + u16.tobytes()
+        compressed = brotli.compress(raw, quality=9)
         path = OUT_DIR / f"temp_{m}.bin"
-        with open(path, "wb") as f:
-            f.write(header)
-            f.write(u16.tobytes())
+        path.write_bytes(compressed)
 
-        size_kb = path.stat().st_size / 1024
-        print(f"  temp_{m}.bin: {valid_count:,} valid px, {size_kb:.0f} KB")
+        print(f"  temp_{m}.bin: {valid_count:,} valid px, {len(raw)/1024:.0f} KB → {len(compressed)/1024:.0f} KB")
 
     ds.close()
 
