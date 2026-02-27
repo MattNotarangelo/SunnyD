@@ -55,14 +55,14 @@ export interface SupplementResponse {
 
 function formatMonthRange(months: number[]): string | null {
   if (!months.length) return null;
-  if (months.length === 12) return "all year";
+  if (months.length === 12) return "the whole year";
 
   const s = new Set(months);
   let start: number | null = null;
   for (let m = 1; m <= 12; m++) {
     if (!s.has(m)) { start = m; break; }
   }
-  if (start === null) return "all year";
+  if (start === null) return "the whole year";
 
   const ordered: number[] = [];
   for (let i = 0; i < 12; i++) {
