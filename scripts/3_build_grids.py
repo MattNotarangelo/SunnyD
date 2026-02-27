@@ -11,12 +11,12 @@ Binary format (little-endian):
   Header (20 bytes):
     uint16  nlat
     uint16  nlon
-    float32 lat0      – latitude of first row (northernmost)
-    float32 lat_step  – degrees per row (negative = north→south)
-    float32 lon0      – longitude of first column (westernmost)
-    float32 lon_step  – degrees per column (positive = west→east)
+    float32 lat0      - latitude of first row (northernmost)
+    float32 lat_step  - degrees per row (negative = north→south)
+    float32 lon0      - longitude of first column (westernmost)
+    float32 lon_step  - degrees per column (positive = west→east)
   Data:
-    nlat × nlon uint16 values (north→south, west→east)
+    nlat x nlon uint16 values (north→south, west→east)
     0xFFFF = no-data / NaN
 
 Encoding:

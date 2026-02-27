@@ -9,7 +9,7 @@ Source: TEMIS UV radiation — Daily UV dose climatology (world)
 Resolution: 0.25° x 0.25°, global (land only)
 Licence: https://www.temis.nl/general/datapolicy.php
 
-Output: uvdvcclim_world_monthly.nc  (12 months × 720 lat × 1440 lon)
+Output: uvdvcclim_world_monthly.nc  (12 months x 720 lat x 1440 lon)
 
 Usage:
     python scripts/1_download_uv.py
