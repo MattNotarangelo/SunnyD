@@ -42,6 +42,28 @@ function parseHeader(buf: ArrayBuffer): GridHeader {
   };
 }
 
+// ── Progress tracking ────────────────────────────────────────────────
+
+const TOTAL_GRIDS = 24; // 12 months × 2 layers
+
+type LoadingCallback = (loaded: number, total: number) => void;
+let onProgress: LoadingCallback | null = null;
+
+/** Register a callback to observe grid loading progress (loaded out of 24). */
+export function setProgressCallback(cb: LoadingCallback | null): void {
+  onProgress = cb;
+}
+
+function notifyProgress(): void {
+  if (!onProgress) return;
+  let loaded = 0;
+  for (let m = 1; m <= 12; m++) {
+    if (cache.uv.has(m)) loaded++;
+    if (cache.temp.has(m)) loaded++;
+  }
+  onProgress(loaded, TOTAL_GRIDS);
+}
+
 // ── Per-month cache ──────────────────────────────────────────────────
 
 const cache: Record<Layer, Map<number, MonthGrid>> = {
@@ -54,20 +76,66 @@ const inflight: Record<Layer, Map<number, Promise<MonthGrid>>> = {
   temp: new Map(),
 };
 
+// ── Retry logic ─────────────────────────────────────────────────────
+
+const MAX_RETRIES = 2;
+const BASE_DELAY_MS = 1000;
+
+function isRetryable(error: unknown): boolean {
+  if (error instanceof Error) {
+    // Retry on network errors (TypeError from fetch) or 5xx status codes
+    if (error.message.includes("fetch") || error.message.includes("network")) {
+      return true;
+    }
+    // Match our own "Grid fetch failed" messages with 5xx status
+    const statusMatch = error.message.match(/\((\d+)\)$/);
+    if (statusMatch) {
+      const status = parseInt(statusMatch[1], 10);
+      return status >= 500;
+    }
+  }
+  return false;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchWithRetry(url: string, layer: Layer, month: number): Promise<MonthGrid> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) {
+        throw new Error(`Grid fetch failed: ${layer}_${month}.bin (${resp.status})`);
+      }
+      const buf = await resp.arrayBuffer();
+      const header = parseHeader(buf);
+      const data = new Uint16Array(buf, HEADER_BYTES);
+      return { header, data };
+    } catch (err) {
+      lastError = err;
+      if (attempt < MAX_RETRIES && isRetryable(err)) {
+        await delay(BASE_DELAY_MS * 2 ** attempt);
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastError;
+}
+
 async function fetchMonthGrid(layer: Layer, month: number): Promise<MonthGrid> {
   const existing = cache[layer].get(month);
   if (existing) return existing;
 
   let promise = inflight[layer].get(month);
   if (!promise) {
-    promise = fetch(`${import.meta.env.BASE_URL}data/${layer}_${month}.bin`)
-      .then(async (resp) => {
-        if (!resp.ok) throw new Error(`Grid fetch failed: ${layer}_${month}.bin (${resp.status})`);
-        const buf = await resp.arrayBuffer();
-        const header = parseHeader(buf);
-        const data = new Uint16Array(buf, HEADER_BYTES);
-        const grid: MonthGrid = { header, data };
+    const url = `${import.meta.env.BASE_URL}data/${layer}_${month}.bin`;
+    promise = fetchWithRetry(url, layer, month)
+      .then((grid) => {
         cache[layer].set(month, grid);
+        notifyProgress();
         return grid;
       })
       .finally(() => {
