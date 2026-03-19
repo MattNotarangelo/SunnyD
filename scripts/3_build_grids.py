@@ -8,13 +8,16 @@ Output: public/data/uv_1.bin … uv_12.bin, temp_1.bin … temp_12.bin
         (24 Brotli-compressed files, served with Content-Encoding: br)
 
 Binary format (little-endian):
-  Header (20 bytes):
+  Header v2 (24 bytes):
+    bytes   magic     - b"SD" (0x53 0x44)
+    uint8   version   - format version (currently 2)
+    uint8   flags     - reserved, set to 0
     uint16  nlat
     uint16  nlon
     float32 lat0      - latitude of first row (northernmost)
-    float32 lat_step  - degrees per row (negative = north→south)
+    float32 lat_step  - degrees per row (negative = north->south)
     float32 lon0      - longitude of first column (westernmost)
-    float32 lon_step  - degrees per column (positive = west→east)
+    float32 lon_step  - degrees per column (positive = west->east)
   Data:
     nlat x nlon uint16 values (north→south, west→east)
     0xFFFF = no-data / NaN
@@ -50,6 +53,9 @@ TEMP_SCALE = 100
 TEMP_OFFSET = 50.0
 KJ_TO_J = 1000.0
 
+MAGIC = b"SD"
+FORMAT_VERSION = 2
+
 
 def encode_uint16(data: np.ndarray, scale: float, offset: float = 0.0) -> np.ndarray:
     flat = data.ravel().astype(np.float64)
@@ -68,7 +74,9 @@ def make_header(lats: np.ndarray, lons: np.ndarray) -> bytes:
     lat_step = float(lats[1] - lats[0]) if nlat > 1 else 0.0
     lon0 = float(lons[0])
     lon_step = float(lons[1] - lons[0]) if nlon > 1 else 0.0
-    return struct.pack("<HH ffff", nlat, nlon, lat0, lat_step, lon0, lon_step)
+    prefix = struct.pack("<2sBB", MAGIC, FORMAT_VERSION, 0)
+    grid_fields = struct.pack("<HH ffff", nlat, nlon, lat0, lat_step, lon0, lon_step)
+    return prefix + grid_fields
 
 
 def build_uv() -> None:

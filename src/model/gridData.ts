@@ -1,27 +1,24 @@
 /**
  * Per-month binary grid loader, tile sampler, and point sampler.
  *
- * Each file (e.g. /data/uv_3.bin) contains a 20-byte header followed by
- * one month of nlat×nlon uint16 values.
+ * Each file (e.g. /data/uv_3.bin) contains a header followed by
+ * one month of nlat*nlon uint16 values.
  *
- * Header (little-endian):
+ * v2 header (little-endian, 24 bytes):
+ *   magic(u16 "SD") version(u8) flags(u8)
  *   nlat(u16) nlon(u16) lat0(f32) latStep(f32) lon0(f32) lonStep(f32)
  *
- * 0xFFFF = no-data.
+ * Legacy v1 header (20 bytes, no prefix):
+ *   nlat(u16) nlon(u16) lat0(f32) latStep(f32) lon0(f32) lonStep(f32)
+ *
+ * The reader auto-detects the format. 0xFFFF = no-data.
  */
 
-const HEADER_BYTES = 20;
+import { parseHeader } from "./gridHeader.ts";
+import type { GridHeader } from "./gridHeader.ts";
+
 const NODATA_U16 = 0xffff;
 const TILE_SIZE = 256;
-
-interface GridHeader {
-  nlat: number;
-  nlon: number;
-  lat0: number;
-  latStep: number;
-  lon0: number;
-  lonStep: number;
-}
 
 interface MonthGrid {
   header: GridHeader;
@@ -29,18 +26,6 @@ interface MonthGrid {
 }
 
 type Layer = "uv" | "temp";
-
-function parseHeader(buf: ArrayBuffer): GridHeader {
-  const view = new DataView(buf, 0, HEADER_BYTES);
-  return {
-    nlat: view.getUint16(0, true),
-    nlon: view.getUint16(2, true),
-    lat0: view.getFloat32(4, true),
-    latStep: view.getFloat32(8, true),
-    lon0: view.getFloat32(12, true),
-    lonStep: view.getFloat32(16, true),
-  };
-}
 
 // ── Per-month cache ──────────────────────────────────────────────────
 
@@ -64,8 +49,8 @@ async function fetchMonthGrid(layer: Layer, month: number): Promise<MonthGrid> {
       .then(async (resp) => {
         if (!resp.ok) throw new Error(`Grid fetch failed: ${layer}_${month}.bin (${resp.status})`);
         const buf = await resp.arrayBuffer();
-        const header = parseHeader(buf);
-        const data = new Uint16Array(buf, HEADER_BYTES);
+        const { header, dataOffset } = parseHeader(buf);
+        const data = new Uint16Array(buf, dataOffset);
         const grid: MonthGrid = { header, data };
         cache[layer].set(month, grid);
         return grid;
