@@ -8,6 +8,7 @@ const DEFAULTS: AppState = {
   skinType: 2,
   coverage: 0.25,
   coveragePreset: "weather_adjusted",
+  colorblindMode: false,
 };
 
 function clampInt(value: unknown, min: number, max: number): number | null {
@@ -48,6 +49,9 @@ function readURL(): Partial<AppState> {
     const preset = parsePreset(p.get("preset"));
     if (preset !== undefined) result.coveragePreset = preset;
   }
+  if (p.has("cb")) {
+    result.colorblindMode = p.get("cb") === "1";
+  }
   return result;
 }
 
@@ -67,6 +71,7 @@ function writeURL(state: AppState) {
   p.set("skin", String(state.skinType));
   p.set("cov", String(state.coverage));
   if (state.coveragePreset) p.set("preset", state.coveragePreset);
+  if (state.colorblindMode) p.set("cb", "1");
   window.history.replaceState(null, "", `?${p.toString()}`);
 }
 
@@ -92,7 +97,8 @@ function initState(): AppState {
   const coverage = clampFraction(merged.coverage) ?? DEFAULTS.coverage;
   const parsedPreset = parsePreset(merged.coveragePreset);
   const coveragePreset = parsedPreset === undefined ? DEFAULTS.coveragePreset : parsedPreset;
-  return { month, skinType, coverage, coveragePreset };
+  const colorblindMode = typeof merged.colorblindMode === "boolean" ? merged.colorblindMode : DEFAULTS.colorblindMode;
+  return { month, skinType, coverage, coveragePreset, colorblindMode };
 }
 
 export function useAppState() {
@@ -112,5 +118,6 @@ export function useAppState() {
     setSkinType: (skinType: number) => update({ skinType }),
     setCoverage: (coverage: number, coveragePreset: string | null) =>
       update({ coverage, coveragePreset }),
+    setColorblindMode: (colorblindMode: boolean) => update({ colorblindMode }),
   };
 }

@@ -11,9 +11,11 @@ interface Props {
   skinType: number;
   coverage: number;
   coveragePreset: string | null;
+  colorblindMode: boolean;
   setMonth: (m: number) => void;
   setSkinType: (s: number) => void;
   setCoverage: (cov: number, preset: string | null) => void;
+  setColorblindMode: (cb: boolean) => void;
   open: boolean;
   onClose: () => void;
   onAbout: () => void;
@@ -25,9 +27,11 @@ export function ControlPanel({
   skinType,
   coverage,
   coveragePreset,
+  colorblindMode,
   setMonth,
   setSkinType,
   setCoverage,
+  setColorblindMode,
   open,
   onClose,
   onAbout,
@@ -82,7 +86,20 @@ export function ControlPanel({
             onChange={setCoverage}
           />
 
-          <ColorLegend />
+          <ColorLegend colorblindMode={colorblindMode} />
+
+          <button
+            onClick={() => setColorblindMode(!colorblindMode)}
+            className={`text-xs px-2 py-1.5 rounded w-full transition-colors ${
+              colorblindMode
+                ? "bg-amber-500 text-gray-900 font-medium"
+                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+            }`}
+            title="Toggle colorblind-friendly palette"
+            aria-pressed={colorblindMode}
+          >
+            {colorblindMode ? "Colorblind Mode: On" : "Colorblind Mode: Off"}
+          </button>
         </div>
 
         <div className="px-4 pb-4">
