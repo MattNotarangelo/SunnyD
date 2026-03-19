@@ -1,5 +1,10 @@
-import { describe, it, expect } from 'vitest';
-import { minutesToColor, legendEntries, minutesToColorPacked } from './colorScale.ts';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { minutesToColor, legendEntries, minutesToColorPacked, setColorPalette, getColorPalette, getActiveDarkRgb } from './colorScale.ts';
+
+// Reset to default palette before each test to prevent cross-test pollution
+beforeEach(() => {
+  setColorPalette("default");
+});
 
 describe('minutesToColor', () => {
   it('returns transparent for noData', () => {
@@ -160,5 +165,91 @@ describe('minutesToColorPacked', () => {
     const b = minutesToColorPacked(120, false, false);
 
     expect(a).toBe(b);
+  });
+});
+
+describe('setColorPalette / getColorPalette', () => {
+  it('defaults to "default" palette', () => {
+    expect(getColorPalette()).toBe("default");
+  });
+
+  it('switches to colorblind palette', () => {
+    setColorPalette("colorblind");
+
+    expect(getColorPalette()).toBe("colorblind");
+  });
+
+  it('switches back to default palette', () => {
+    setColorPalette("colorblind");
+    setColorPalette("default");
+
+    expect(getColorPalette()).toBe("default");
+  });
+});
+
+describe('getActiveDarkRgb', () => {
+  it('returns dark red rgb string for default palette', () => {
+    expect(getActiveDarkRgb()).toBe("rgb(120,10,10)");
+  });
+
+  it('returns dark purple rgb string for colorblind palette', () => {
+    setColorPalette("colorblind");
+
+    expect(getActiveDarkRgb()).toBe("rgb(30,0,50)");
+  });
+});
+
+describe('colorblind palette', () => {
+  it('minutesToColor returns yellow for 5 min (low end)', () => {
+    setColorPalette("colorblind");
+    const color = minutesToColor(5, false, false);
+
+    // First colorblind stop: yellow [253, 231, 37]
+    expect(color).toEqual([253, 231, 37, 255]);
+  });
+
+  it('minutesToColor returns dark purple for 240 min (high end)', () => {
+    setColorPalette("colorblind");
+    const color = minutesToColor(240, false, false);
+
+    // Last colorblind stop: dark purple [68, 1, 84]
+    expect(color).toEqual([68, 1, 84, 255]);
+  });
+
+  it('minutesToColor returns colorblind dark for infinite', () => {
+    setColorPalette("colorblind");
+    const color = minutesToColor(null, true, false);
+
+    expect(color).toEqual([30, 0, 50, 255]);
+  });
+
+  it('minutesToColorPacked returns colorblind dark for infinite', () => {
+    setColorPalette("colorblind");
+    const packed = minutesToColorPacked(100, true, false);
+    const expected = 30 | (0 << 8) | (50 << 16) | (255 << 24);
+
+    expect(packed).toBe(expected);
+  });
+
+  it('legendEntries returns yellow for first entry in colorblind mode', () => {
+    setColorPalette("colorblind");
+    const entries = legendEntries(5);
+
+    expect(entries[0].color).toBe('rgb(253,231,37)');
+  });
+
+  it('legendEntries returns dark purple for last entry in colorblind mode', () => {
+    setColorPalette("colorblind");
+    const entries = legendEntries(5);
+
+    expect(entries[entries.length - 1].color).toBe('rgb(68,1,84)');
+  });
+
+  it('produces different colors than default palette for same input', () => {
+    const defaultColor = minutesToColor(60, false, false);
+    setColorPalette("colorblind");
+    const cbColor = minutesToColor(60, false, false);
+
+    expect(cbColor).not.toEqual(defaultColor);
   });
 });
