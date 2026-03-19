@@ -2,11 +2,13 @@
  * Per-month binary grid loader, tile sampler, and point sampler.
  *
  * Each file (e.g. /data/uv_3.bin) contains a 20-byte header followed by
- * one month of nlat×nlon uint16 values.
+ * one month of spatially delta-encoded nlat×nlon values.
  *
  * Header (little-endian):
  *   nlat(u16) nlon(u16) lat0(f32) latStep(f32) lon0(f32) lonStep(f32)
  *
+ * Data: column 0 is absolute uint16 (stored as int16 on disk),
+ *       columns 1+ are int16 deltas from the left neighbor.
  * 0xFFFF = no-data.
  */
 
@@ -101,6 +103,27 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * Decode spatial delta encoding: column 0 is absolute (uint16 reinterpreted
+ * as int16), columns 1+ are int16 deltas from the left neighbor.
+ */
+function decodeSpatialDelta(buf: ArrayBuffer, header: GridHeader): Uint16Array {
+  const { nlat, nlon } = header;
+  const i16 = new Int16Array(buf, HEADER_BYTES);
+  const out = new Uint16Array(nlat * nlon);
+
+  for (let row = 0; row < nlat; row++) {
+    const base = row * nlon;
+    let acc = i16[base] & 0xffff;
+    out[base] = acc;
+    for (let col = 1; col < nlon; col++) {
+      acc = (acc + i16[base + col]) & 0xffff;
+      out[base + col] = acc;
+    }
+  }
+  return out;
+}
+
 async function fetchWithRetry(url: string, layer: Layer, month: number): Promise<MonthGrid> {
   let lastError: unknown;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
@@ -111,7 +134,7 @@ async function fetchWithRetry(url: string, layer: Layer, month: number): Promise
       }
       const buf = await resp.arrayBuffer();
       const header = parseHeader(buf);
-      const data = new Uint16Array(buf, HEADER_BYTES);
+      const data = decodeSpatialDelta(buf, header);
       return { header, data };
     } catch (err) {
       lastError = err;
