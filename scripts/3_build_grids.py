@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Build static binary grid files for the SunnyD frontend.
 
-Reads the preprocessed NetCDF datasets and writes per-month Brotli-compressed
-uint16 binary grids that the React app loads lazily at runtime.
+Reads the preprocessed NetCDF datasets and writes spatially delta-encoded,
+Brotli-compressed uint16 binary grids that the React app loads lazily at runtime.
 
 Output: public/data/uv_1.bin … uv_12.bin, temp_1.bin … temp_12.bin
         (24 Brotli-compressed files, served with Content-Encoding: br)
@@ -15,9 +15,10 @@ Binary format (little-endian):
     float32 lat_step  - degrees per row (negative = north→south)
     float32 lon0      - longitude of first column (westernmost)
     float32 lon_step  - degrees per column (positive = west→east)
-  Data:
-    nlat x nlon uint16 values (north→south, west→east)
-    0xFFFF = no-data / NaN
+  Data (nlat × nlon × 2 bytes, spatially delta-encoded):
+    Column 0: uint16 absolute values (0xFFFF = no-data / NaN)
+    Columns 1…nlon-1: int16 deltas from the left neighbor (west→east)
+    Rows 0…nlat-1: north→south
 
 Encoding:
   UV:   value_J = kJ_value * 1000;  encoded = round(value_J * 3)
@@ -61,6 +62,25 @@ def encode_uint16(data: np.ndarray, scale: float, offset: float = 0.0) -> np.nda
     return out
 
 
+def spatial_delta_encode(grid: np.ndarray, nlat: int, nlon: int) -> np.ndarray:
+    """Row-wise delta encode: first column absolute, rest as int16 deltas."""
+    grid_2d = grid.reshape(nlat, nlon)
+    encoded = np.empty((nlat, nlon), dtype=np.int16)
+
+    # First column stored as-is (reinterpreted as int16 on disk, decoded with & 0xFFFF)
+    encoded[:, 0] = grid_2d[:, 0].view(np.int16)
+
+    # Remaining columns: delta from left neighbor
+    deltas = grid_2d[:, 1:].astype(np.int32) - grid_2d[:, :-1].astype(np.int32)
+
+    if np.any((deltas < -32768) | (deltas > 32767)):
+        overflow_count = int(np.sum((deltas < -32768) | (deltas > 32767)))
+        print(f"    WARNING: {overflow_count} deltas overflow int16 range!")
+
+    encoded[:, 1:] = deltas.astype(np.int16)
+    return encoded.ravel()
+
+
 def make_header(lats: np.ndarray, lons: np.ndarray) -> bytes:
     nlat = len(lats)
     nlon = len(lons)
@@ -85,6 +105,7 @@ def build_uv() -> None:
         flip_lat = False
 
     header = make_header(lats, lons)
+    nlat, nlon = len(lats), len(lons)
 
     for m in range(1, 13):
         arr = dose.sel(month=m).values.astype(np.float32)
@@ -94,12 +115,15 @@ def build_uv() -> None:
         u16 = encode_uint16(arr, UV_SCALE)
         valid_count = int(np.sum(u16 != NODATA))
 
-        raw = header + u16.tobytes()
-        compressed = brotli.compress(raw, quality=9)
+        encoded = spatial_delta_encode(u16, nlat, nlon)
+        raw = header + encoded.tobytes()
+        compressed = brotli.compress(raw, quality=11)
         path = OUT_DIR / f"uv_{m}.bin"
         path.write_bytes(compressed)
 
-        print(f"  uv_{m}.bin: {valid_count:,} valid px, {len(raw)/1024:.0f} KB → {len(compressed)/1024:.0f} KB")
+        print(
+            f"  uv_{m}.bin: {valid_count:,} valid px, {len(raw)/1024:.0f} KB → {len(compressed)/1024:.0f} KB"
+        )
 
     ds.close()
 
@@ -118,6 +142,7 @@ def build_temp() -> None:
         flip_lat = False
 
     header = make_header(lats, lons)
+    nlat, nlon = len(lats), len(lons)
 
     for m in range(1, 13):
         arr = temp.sel(month=m).values.astype(np.float32)
@@ -126,12 +151,15 @@ def build_temp() -> None:
         u16 = encode_uint16(arr, TEMP_SCALE, TEMP_OFFSET)
         valid_count = int(np.sum(u16 != NODATA))
 
-        raw = header + u16.tobytes()
-        compressed = brotli.compress(raw, quality=9)
+        encoded = spatial_delta_encode(u16, nlat, nlon)
+        raw = header + encoded.tobytes()
+        compressed = brotli.compress(raw, quality=11)
         path = OUT_DIR / f"temp_{m}.bin"
         path.write_bytes(compressed)
 
-        print(f"  temp_{m}.bin: {valid_count:,} valid px, {len(raw)/1024:.0f} KB → {len(compressed)/1024:.0f} KB")
+        print(
+            f"  temp_{m}.bin: {valid_count:,} valid px, {len(raw)/1024:.0f} KB → {len(compressed)/1024:.0f} KB"
+        )
 
     ds.close()
 
