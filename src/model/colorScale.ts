@@ -1,8 +1,11 @@
 /**
  * Log-scale color mapping for minutes of sun exposure.
  *
- * Range: ~5 min (green) to 240 min (red).  >240 or Infinity -> grey.
+ * Range: ~5 min (green) to 240 min (red).  >240 or Infinity -> dark.
+ * Supports a default (green-to-red) and colorblind-safe (viridis-like) palette.
  */
+
+export type ColorPalette = "default" | "colorblind";
 
 const MAX_MINUTES = 240;
 const LOG_MIN = Math.log10(5);
@@ -10,6 +13,7 @@ const LOG_MAX = Math.log10(MAX_MINUTES);
 const LOG_RANGE = LOG_MAX - LOG_MIN;
 
 const DARK_RED: [number, number, number, number] = [120, 10, 10, 255];
+const COLORBLIND_DARK: [number, number, number, number] = [30, 0, 50, 255];
 const TRANSPARENT: [number, number, number, number] = [0, 0, 0, 0];
 
 interface ColorStop {
@@ -19,7 +23,7 @@ interface ColorStop {
   b: number;
 }
 
-const STOPS: ColorStop[] = [
+const DEFAULT_STOPS: ColorStop[] = [
   { t: 0.0, r: 34, g: 139, b: 34 },   // forest green  — few minutes
   { t: 0.25, r: 50, g: 205, b: 50 },   // lime green
   { t: 0.5, r: 255, g: 215, b: 0 },    // gold/yellow
@@ -27,12 +31,37 @@ const STOPS: ColorStop[] = [
   { t: 1.0, r: 200, g: 30, b: 30 },    // red           — many minutes
 ];
 
+const COLORBLIND_STOPS: ColorStop[] = [
+  { t: 0.0, r: 68, g: 1, b: 84 },      // dark purple   — few minutes (viridis)
+  { t: 0.25, r: 59, g: 82, b: 139 },   // blue
+  { t: 0.5, r: 33, g: 145, b: 140 },   // teal
+  { t: 0.75, r: 94, g: 201, b: 98 },   // green
+  { t: 1.0, r: 253, g: 231, b: 37 },   // yellow        — many minutes
+];
+
+let activeStops: ColorStop[] = DEFAULT_STOPS;
+let activeDark: [number, number, number, number] = DARK_RED;
+
+export function setColorPalette(palette: ColorPalette): void {
+  activeStops = palette === "colorblind" ? COLORBLIND_STOPS : DEFAULT_STOPS;
+  activeDark = palette === "colorblind" ? COLORBLIND_DARK : DARK_RED;
+  initLUT();
+}
+
+export function getColorPalette(): ColorPalette {
+  return activeStops === COLORBLIND_STOPS ? "colorblind" : "default";
+}
+
+export function getActiveDarkRgb(): string {
+  return `rgb(${activeDark[0]},${activeDark[1]},${activeDark[2]})`;
+}
+
 function lerpStops(t: number): [number, number, number, number] {
   const clamped = Math.max(0, Math.min(1, t));
-  for (let i = 1; i < STOPS.length; i++) {
-    if (clamped <= STOPS[i].t) {
-      const prev = STOPS[i - 1];
-      const next = STOPS[i];
+  for (let i = 1; i < activeStops.length; i++) {
+    if (clamped <= activeStops[i].t) {
+      const prev = activeStops[i - 1];
+      const next = activeStops[i];
       const local = (clamped - prev.t) / (next.t - prev.t);
       return [
         Math.round(prev.r + (next.r - prev.r) * local),
@@ -42,7 +71,7 @@ function lerpStops(t: number): [number, number, number, number] {
       ];
     }
   }
-  const last = STOPS[STOPS.length - 1];
+  const last = activeStops[activeStops.length - 1];
   return [last.r, last.g, last.b, 255];
 }
 
@@ -52,7 +81,7 @@ export function minutesToColor(
   isNoData: boolean,
 ): [number, number, number, number] {
   if (isNoData) return TRANSPARENT;
-  if (isInfinite || minutes === null || minutes > MAX_MINUTES) return DARK_RED;
+  if (isInfinite || minutes === null || minutes > MAX_MINUTES) return activeDark;
   const t = (Math.log10(minutes) - LOG_MIN) / LOG_RANGE;
   return lerpStops(t);
 }
@@ -94,7 +123,7 @@ function initLUT() {
     const [r, g, b, a] = lerpStops(t);
     colorLUT[i] = packRGBA(r, g, b, a);
   }
-  darkRedPacked = packRGBA(...DARK_RED);
+  darkRedPacked = packRGBA(...activeDark);
   transparentPacked = packRGBA(...TRANSPARENT);
 }
 initLUT();

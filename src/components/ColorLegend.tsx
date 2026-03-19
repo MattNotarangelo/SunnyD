@@ -1,8 +1,15 @@
-import { legendEntries } from "../model/colorScale";
+import { legendEntries, getActiveDarkRgb } from "../model/colorScale";
 
-const entries = legendEntries(7);
+interface Props {
+  colorblindMode: boolean;
+}
 
-export function ColorLegend() {
+export function ColorLegend({ colorblindMode }: Props) {
+  // Re-compute entries when palette changes (colorblindMode triggers re-render)
+  void colorblindMode;
+  const entries = legendEntries(7);
+  const darkColor = getActiveDarkRgb();
+
   return (
     <div>
       <label className="block text-sm font-medium text-gray-300 mb-1">
@@ -22,7 +29,7 @@ export function ColorLegend() {
         </div>
       </div>
       <div className="flex items-center gap-2 mt-1.5 text-xs text-gray-400">
-        <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: "rgb(120,10,10)" }} />
+        <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: darkColor }} />
         &gt;240 min / Insufficient UV
       </div>
     </div>

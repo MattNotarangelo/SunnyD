@@ -44,6 +44,7 @@ export interface AppState {
   skinType: number;
   coverage: number;
   coveragePreset: string | null;
+  colorblindMode: boolean;
 }
 
 export interface ModelParams {
@@ -56,4 +57,5 @@ export interface ModelParams {
   month: number;
   tempEncodingScale: number;
   tempOffset: number;
+  colorPalette: "default" | "colorblind";
 }

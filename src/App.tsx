@@ -3,6 +3,7 @@ import { ControlPanel } from "./components/ControlPanel";
 import { MapView } from "./components/MapView";
 import { useAppState } from "./hooks/useAppState";
 import { useMethodology } from "./hooks/useMethodology";
+import { setColorPalette } from "./model/colorScale";
 import { loadMonth, monthReady, prefetchAllMonths } from "./model/gridData";
 import type { ModelParams } from "./types";
 
@@ -57,6 +58,11 @@ export default function App() {
     };
   }, [state.month]);
 
+  // Sync color palette module state when colorblind mode changes
+  useEffect(() => {
+    setColorPalette(state.colorblindMode ? "colorblind" : "default");
+  }, [state.colorblindMode]);
+
   const modelParams: ModelParams = useMemo(
     () => ({
       skinType: state.skinType,
@@ -68,8 +74,9 @@ export default function App() {
       month: state.month,
       tempEncodingScale: methodology.encoding.temp_encoding_scale,
       tempOffset: methodology.encoding.temp_offset,
+      colorPalette: state.colorblindMode ? "colorblind" : "default",
     }),
-    [methodology, state.month, state.coverage, state.coveragePreset, state.skinType],
+    [methodology, state.month, state.coverage, state.coveragePreset, state.skinType, state.colorblindMode],
   );
 
   if (loadError) {
@@ -130,9 +137,11 @@ export default function App() {
         skinType={state.skinType}
         coverage={state.coverage}
         coveragePreset={state.coveragePreset}
+        colorblindMode={state.colorblindMode}
         setMonth={state.setMonth}
         setSkinType={state.setSkinType}
         setCoverage={state.setCoverage}
+        setColorblindMode={state.setColorblindMode}
         open={panelOpen}
         onClose={() => setPanelOpen(false)}
         onAbout={() => setAboutOpen(true)}
