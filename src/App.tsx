@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { ControlPanel } from "./components/ControlPanel";
+import { LoadingProgress } from "./components/LoadingProgress";
 import { MapView } from "./components/MapView";
 import { useAppState } from "./hooks/useAppState";
 import { useMethodology } from "./hooks/useMethodology";
@@ -28,6 +29,7 @@ export default function App() {
   const [aboutOpen, setAboutOpen] = useState(false);
   const [ready, setReady] = useState(monthReady(state.month));
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   // Load current month's grids, then background-prefetch the rest
   useEffect(() => {
@@ -56,7 +58,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [state.month]);
+  }, [state.month, retryCount]);
 
   const modelParams: ModelParams = useMemo(
     () => {
@@ -83,6 +85,16 @@ export default function App() {
         <div className="text-center">
           <p className="text-lg font-semibold">Failed to load data</p>
           <p className="text-sm mt-2 text-gray-500">{loadError}</p>
+          <button
+            onClick={() => {
+              setLoadError(null);
+              setReady(false);
+              setRetryCount((c) => c + 1);
+            }}
+            className="mt-4 px-4 py-2 bg-amber-500 text-gray-900 rounded hover:bg-amber-400 text-sm font-medium"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -101,6 +113,7 @@ export default function App() {
 
   return (
     <div className="h-full flex relative">
+      <LoadingProgress />
       {/* Mobile header — title + settings toggle */}
       <div className="md:hidden fixed top-3 left-3 right-3 z-20 flex items-center gap-3">
         <button
