@@ -58,13 +58,11 @@ export default function App() {
     };
   }, [state.month]);
 
-  // Sync color palette module state when colorblind mode changes
-  useEffect(() => {
-    setColorPalette(state.colorblindMode ? "colorblind" : "default");
-  }, [state.colorblindMode]);
-
   const modelParams: ModelParams = useMemo(
-    () => ({
+    () => {
+    // Sync palette module state synchronously before render reads it
+    setColorPalette(state.colorblindMode ? "colorblind" : "default");
+    return {
       skinType: state.skinType,
       fCover: state.coverage,
       kSkin: methodology.fitzpatrick_table[String(state.skinType)] ?? 1,
@@ -75,7 +73,7 @@ export default function App() {
       tempEncodingScale: methodology.encoding.temp_encoding_scale,
       tempOffset: methodology.encoding.temp_offset,
       colorPalette: state.colorblindMode ? "colorblind" : "default",
-    }),
+    };},
     [methodology, state.month, state.coverage, state.coveragePreset, state.skinType, state.colorblindMode],
   );
 

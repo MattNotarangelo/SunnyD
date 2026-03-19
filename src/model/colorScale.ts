@@ -32,11 +32,11 @@ const DEFAULT_STOPS: ColorStop[] = [
 ];
 
 const COLORBLIND_STOPS: ColorStop[] = [
-  { t: 0.0, r: 68, g: 1, b: 84 },      // dark purple   — few minutes (viridis)
-  { t: 0.25, r: 59, g: 82, b: 139 },   // blue
+  { t: 0.0, r: 253, g: 231, b: 37 },   // yellow        — few minutes
+  { t: 0.25, r: 94, g: 201, b: 98 },   // green
   { t: 0.5, r: 33, g: 145, b: 140 },   // teal
-  { t: 0.75, r: 94, g: 201, b: 98 },   // green
-  { t: 1.0, r: 253, g: 231, b: 37 },   // yellow        — many minutes
+  { t: 0.75, r: 59, g: 82, b: 139 },   // blue
+  { t: 1.0, r: 68, g: 1, b: 84 },      // dark purple   — many minutes
 ];
 
 let activeStops: ColorStop[] = DEFAULT_STOPS;
