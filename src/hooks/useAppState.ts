@@ -4,7 +4,7 @@ import type { AppState } from "../types";
 const STORAGE_KEY = "sunnyd_state";
 
 const DEFAULTS: AppState = {
-  month: 7,
+  month: new Date().getMonth() + 1,
   skinType: 2,
   coverage: 0.25,
   coveragePreset: "weather_adjusted",
