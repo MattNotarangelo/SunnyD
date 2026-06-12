@@ -115,6 +115,17 @@ export function MapView({ month, modelParams, onMapClick }: Props) {
 
     map.addControl(new maplibregl.NavigationControl(), "top-right");
 
+    const geolocate = new maplibregl.GeolocateControl({
+      positionOptions: { enableHighAccuracy: false },
+      trackUserLocation: false,
+      fitBoundsOptions: { maxZoom: 5 },
+    });
+    map.addControl(geolocate, "top-right");
+    geolocate.on("geolocate", (pos) => {
+      const lon = (((pos.coords.longitude % 360) + 540) % 360) - 180;
+      onMapClickRef.current({ lat: pos.coords.latitude, lon });
+    });
+
     map.on("load", () => {
       mapRef.current = map;
       setModelParams(paramsRef.current);
