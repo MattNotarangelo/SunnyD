@@ -72,7 +72,7 @@ export function SearchBox({ onSelect }: Props) {
   };
 
   return (
-    <div className="fixed z-20 w-64 top-[4.2rem] left-3 md:top-3 md:left-1/2 md:-translate-x-1/2">
+    <div className="fixed z-20 w-64 top-[4.2rem] left-3 md:top-3 md:left-[21.5rem]">
       <input
         type="search"
         value={query}
