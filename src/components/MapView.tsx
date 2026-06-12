@@ -13,13 +13,20 @@ interface ClickInfo {
   lon: number;
 }
 
+export interface FocusTarget {
+  lat: number;
+  lon: number;
+  zoom: number;
+}
+
 interface Props {
   month: number;
   modelParams: ModelParams;
   onMapClick: (info: ClickInfo) => void;
+  focus?: FocusTarget | null;
 }
 
-export function MapView({ month, modelParams, onMapClick }: Props) {
+export function MapView({ month, modelParams, onMapClick, focus }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const versionRef = useRef(0);
@@ -74,6 +81,13 @@ export function MapView({ month, modelParams, onMapClick }: Props) {
       },
     });
   }, []);
+
+  // Fly to a requested target (e.g. a search result)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !focus) return;
+    map.flyTo({ center: [focus.lon, focus.lat], zoom: focus.zoom });
+  }, [focus]);
 
   // Re-render tiles when month or model params change (debounced for fast slider dragging)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
