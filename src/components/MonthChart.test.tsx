@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import { MonthChart } from './MonthChart.tsx';
+import { minutesToColor } from '../model/colorScale.ts';
 import type { MonthMinutes } from '../api/estimate.ts';
 
 afterEach(cleanup);
@@ -35,6 +36,21 @@ describe('MonthChart', () => {
     expect(screen.getByTestId('month-bar-1').dataset.hard).toBe('true');
     expect(screen.getByTestId('month-bar-2').dataset.hard).toBe('true');
     expect(screen.getByTestId('month-bar-3').dataset.hard).toBe('false');
+  });
+
+  it('colors bars with the map color scale', () => {
+    const minutes: Array<number | null> = Array(12).fill(30);
+    minutes[1] = null;
+
+    render(<MonthChart monthly={profile(minutes)} currentMonth={6} />);
+
+    const [r, g, b] = minutesToColor(30, false, false);
+    const bar = screen.getByTestId('month-bar-1').firstElementChild as HTMLElement;
+    expect(bar.style.backgroundColor).toBe(`rgb(${r}, ${g}, ${b})`);
+
+    const [dr, dg, db] = minutesToColor(null, true, false);
+    const darkBar = screen.getByTestId('month-bar-2').firstElementChild as HTMLElement;
+    expect(darkBar.style.backgroundColor).toBe(`rgb(${dr}, ${dg}, ${db})`);
   });
 
   it('describes each month in the bar title', () => {

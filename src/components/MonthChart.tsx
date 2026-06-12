@@ -1,4 +1,5 @@
 import type { MonthMinutes } from "../api/estimate";
+import { minutesToColor } from "../model/colorScale";
 
 const MONTH_INITIALS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
 const FULL_MONTHS = [
@@ -32,7 +33,8 @@ export function MonthChart({ monthly, currentMonth }: Props) {
             ? 100
             : Math.max(MIN_BAR_PCT, (m.minutes! / CAP_MINUTES) * 100);
           const isCurrent = m.month === currentMonth;
-          const color = hard ? "bg-rose-500" : "bg-amber-400";
+          // Same scale the map tiles use, so bar colors match the map
+          const [r, g, b] = minutesToColor(m.minutes, m.minutes === null, false);
           const opacity = isCurrent ? "opacity-100" : "opacity-40";
           return (
             <div
@@ -44,8 +46,8 @@ export function MonthChart({ monthly, currentMonth }: Props) {
               className="flex-1 flex items-end h-full"
             >
               <div
-                className={`w-full rounded-t-sm ${color} ${opacity}`}
-                style={{ height: `${heightPct}%` }}
+                className={`w-full rounded-t-sm ${opacity}`}
+                style={{ height: `${heightPct}%`, backgroundColor: `rgb(${r},${g},${b})` }}
               />
             </div>
           );
