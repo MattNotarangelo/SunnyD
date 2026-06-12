@@ -1,7 +1,8 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { ControlPanel } from "./components/ControlPanel";
 import { LoadingProgress } from "./components/LoadingProgress";
-import { MapView } from "./components/MapView";
+import { MapView, type FocusTarget } from "./components/MapView";
+import { SearchBox } from "./components/SearchBox";
 import { useAppState } from "./hooks/useAppState";
 import { useMethodology } from "./hooks/useMethodology";
 import { setColorPalette } from "./model/colorScale";
@@ -25,6 +26,7 @@ export default function App() {
   const { methodology } = useMethodology();
   const state = useAppState();
   const [click, setClick] = useState<ClickState | null>(null);
+  const [focus, setFocus] = useState<FocusTarget | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [ready, setReady] = useState(monthReady(state.month));
@@ -157,7 +159,18 @@ export default function App() {
         onClose={() => setPanelOpen(false)}
         onAbout={() => setAboutOpen(true)}
       />
-      <MapView month={state.month} modelParams={modelParams} onMapClick={(info) => setClick(info)} />
+      <SearchBox
+        onSelect={(r) => {
+          setClick({ lat: r.lat, lon: r.lon });
+          setFocus({ lat: r.lat, lon: r.lon, zoom: 5 });
+        }}
+      />
+      <MapView
+        month={state.month}
+        modelParams={modelParams}
+        onMapClick={(info) => setClick(info)}
+        focus={focus}
+      />
       {click && (
         <Suspense fallback={null}>
           <Tooltip
