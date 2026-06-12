@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { getEstimate, getSupplement, type SupplementResponse } from "../api/estimate";
+import { getEstimate, getMonthlyProfile, type MonthlyProfileResponse } from "../api/estimate";
 import type { ModelParams } from "../types";
 import { computeMinutes } from "../model/vitd";
 import { weatherExposure } from "../model/weather";
+import { MonthChart } from "./MonthChart";
 
 interface Props {
   lat: number;
@@ -22,8 +23,8 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
-  const [supplement, setSupplement] = useState<SupplementResponse | null>(null);
-  const [supplementKey, setSupplementKey] = useState("");
+  const [profile, setProfile] = useState<MonthlyProfileResponse | null>(null);
+  const [profileKey, setProfileKey] = useState("");
 
   const coverageForCalc = modelParams.weatherAdjusted ? 0.25 : modelParams.fCover;
   const skinType = modelParams.skinType;
@@ -37,20 +38,20 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
   useEffect(() => {
     let cancelled = false;
     const key = requestKey;
-    getSupplement({
+    getMonthlyProfile({
       lat,
       lon,
       skinType,
       coverage: coverageForCalc,
       weatherAdjusted: modelParams.weatherAdjusted,
     })
-      .then((s) => {
+      .then((p) => {
         if (!cancelled) {
-          setSupplement(s);
-          setSupplementKey(key);
+          setProfile(p);
+          setProfileKey(key);
         }
       })
-      .catch(() => { /* supplement is optional; silently degrade */ });
+      .catch(() => { /* the profile is optional; silently degrade */ });
     return () => { cancelled = true; };
   }, [lat, lon, skinType, coverageForCalc, modelParams.weatherAdjusted, requestKey]);
 
@@ -124,9 +125,17 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
             );
           })()}
         </div>
-        {supplementKey === requestKey && supplement?.label && (
+        {profileKey === requestKey && profile && (
+          <div className="mt-2 border-t border-gray-700 pt-2">
+            <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-1">
+              Minutes needed by month
+            </p>
+            <MonthChart monthly={profile.monthly} currentMonth={month} />
+          </div>
+        )}
+        {profileKey === requestKey && profile?.supplement.label && (
           <p className="text-xs text-amber-300/80 mt-2">
-            Consider supplemental Vitamin D during {supplement.label}
+            Consider supplemental Vitamin D during {profile.supplement.label}
           </p>
         )}
       </div>
