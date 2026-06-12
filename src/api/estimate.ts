@@ -74,19 +74,30 @@ function formatMonthRange(months: number[]): string | null {
   return `${MONTH_ABBR[ordered[0] - 1]}\u2013${MONTH_ABBR[ordered[ordered.length - 1] - 1]}`;
 }
 
-function computeSupplement(params: {
+export interface MonthMinutes {
+  month: number;
+  /** Required midday minutes; null when synthesis is impossible (no UV or zero coverage). */
+  minutes: number | null;
+}
+
+export interface MonthlyProfileResponse {
+  monthly: MonthMinutes[];
+  supplement: SupplementResponse;
+}
+
+function computeMonthlyMinutes(params: {
   lat: number;
   lon: number;
   skinType: number;
   coverage: number;
   weatherAdjusted?: boolean;
-}): SupplementResponse {
+}): MonthMinutes[] {
   const { lat, lon, skinType, coverage, weatherAdjusted } = params;
   const normLon = (((lon + 180) % 360) + 360) % 360 - 180;
   const kSkin = METHODOLOGY.fitzpatrick_table[String(skinType)] ?? 1;
   const kMinutes = METHODOLOGY.constants.K_minutes;
 
-  const hardMonths: number[] = [];
+  const monthly: MonthMinutes[] = [];
   for (let m = 1; m <= 12; m++) {
     let hD = samplePoint("uv", m, lat, normLon, ENC_SCALE, 0);
     if (isNaN(hD)) hD = 0;
@@ -98,26 +109,33 @@ function computeSupplement(params: {
     }
 
     const result = computeMinutes(hD, kSkin, fc, kMinutes);
-    if (result.minutes === null || result.minutes > SUPPLEMENT_THRESHOLD) {
-      hardMonths.push(m);
-    }
+    monthly.push({ month: m, minutes: result.minutes });
   }
 
+  return monthly;
+}
+
+export function deriveSupplement(monthly: MonthMinutes[]): SupplementResponse {
+  const hardMonths = monthly
+    .filter((m) => m.minutes === null || m.minutes > SUPPLEMENT_THRESHOLD)
+    .map((m) => m.month);
   return { months: hardMonths, label: formatMonthRange(hardMonths) };
 }
 
 /**
- * Async wrapper: loads all months if needed, then computes supplement.
+ * Async wrapper: loads all months if needed, then computes the per-month
+ * minutes profile and the supplement advice derived from it.
  */
-export async function getSupplement(params: {
+export async function getMonthlyProfile(params: {
   lat: number;
   lon: number;
   skinType: number;
   coverage: number;
   weatherAdjusted?: boolean;
-}): Promise<SupplementResponse> {
+}): Promise<MonthlyProfileResponse> {
   if (!allMonthsReady()) {
     await loadAllMonths();
   }
-  return computeSupplement(params);
+  const monthly = computeMonthlyMinutes(params);
+  return { monthly, supplement: deriveSupplement(monthly) };
 }
