@@ -91,13 +91,7 @@ def make_header(lats: np.ndarray, lons: np.ndarray) -> bytes:
     return struct.pack("<HH ffff", nlat, nlon, lat0, lat_step, lon0, lon_step)
 
 
-def build_uv() -> None:
-    print(f"Loading UV data from {UV_NC.name} ...")
-    ds = xr.open_dataset(UV_NC, engine="h5netcdf")
-    dose = ds["uvd_clear_mean"]
-    lats = ds["latitude"].values.astype(np.float32)
-    lons = ds["longitude"].values.astype(np.float32)
-
+def write_uv_grids(dose, lats: np.ndarray, lons: np.ndarray, prefix: str) -> None:
     if lats[-1] > lats[0]:
         lats = lats[::-1]
         flip_lat = True
@@ -118,13 +112,34 @@ def build_uv() -> None:
         encoded = spatial_delta_encode(u16, nlat, nlon)
         raw = header + encoded.tobytes()
         compressed = brotli.compress(raw, quality=11)
-        path = OUT_DIR / f"uv_{m}.bin"
+        path = OUT_DIR / f"{prefix}_{m}.bin"
         path.write_bytes(compressed)
 
         print(
-            f"  uv_{m}.bin: {valid_count:,} valid px, {len(raw)/1024:.0f} KB → {len(compressed)/1024:.0f} KB"
+            f"  {prefix}_{m}.bin: {valid_count:,} valid px, {len(raw)/1024:.0f} KB → {len(compressed)/1024:.0f} KB"
         )
 
+
+def build_uv() -> None:
+    print(f"Loading UV data from {UV_NC.name} ...")
+    ds = xr.open_dataset(UV_NC, engine="h5netcdf")
+    lats = ds["latitude"].values.astype(np.float32)
+    lons = ds["longitude"].values.astype(np.float32)
+    write_uv_grids(ds["uvd_clear_mean"], lats, lons, "uv")
+    ds.close()
+
+
+def build_uv_cloud() -> None:
+    """Cloud-modified dose where available (Meteosat disk: Europe/Africa/
+    Atlantic), clear-sky elsewhere — blended at build time so the frontend
+    can treat it as a single self-contained layer."""
+    print(f"Loading cloud-modified UV data from {UV_NC.name} ...")
+    ds = xr.open_dataset(UV_NC, engine="h5netcdf")
+    lats = ds["latitude"].values.astype(np.float32)
+    lons = ds["longitude"].values.astype(np.float32)
+    cloudy = ds["uvd_cloudy_mean"]
+    blended = cloudy.where(cloudy.notnull(), ds["uvd_clear_mean"])
+    write_uv_grids(blended, lats, lons, "uvcloud")
     ds.close()
 
 
@@ -175,6 +190,8 @@ def main() -> None:
         sys.exit(1)
 
     build_uv()
+    print()
+    build_uv_cloud()
     print()
     build_temp()
     print(f"\nDone! Grid files are in {OUT_DIR.relative_to(PROJECT_ROOT)}/")

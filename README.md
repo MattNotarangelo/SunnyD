@@ -43,6 +43,12 @@ encoded = round((value + offset) * scale)
 
 Frontend decodes: `value = uint16_value / scale - offset`
 
+In addition to the clear-sky UV grids (`uv_<m>.bin`), the build produces
+cloud-adjusted grids (`uvcloud_<m>.bin`, same encoding) used by the optional
+"Cloud-Adjusted UV" mode: the TEMIS cloud-modified dose where available
+(Meteosat coverage: Europe, Africa & the Atlantic) blended with clear-sky
+values elsewhere. They are only downloaded when the mode is enabled.
+
 ## Data sources
 
 ### UV dose (UVB)

@@ -64,6 +64,18 @@ describe('useAppState selected point', () => {
     expect(new URLSearchParams(window.location.search).get('month')).toBe('7');
   });
 
+  it('restores cloud-adjusted mode from the URL and persists it', () => {
+    window.history.replaceState(null, '', '/?sky=cloud');
+
+    const { result } = renderHook(() => useAppState());
+
+    expect(result.current.cloudAdjusted).toBe(true);
+
+    act(() => result.current.setCloudAdjusted(false));
+
+    expect(new URLSearchParams(window.location.search).get('sky')).toBeNull();
+  });
+
   it('does not persist the selected point to localStorage', () => {
     const { result } = renderHook(() => useAppState());
 

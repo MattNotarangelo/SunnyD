@@ -100,7 +100,11 @@ export function AboutModal({ onClose, modelVersion }: Props) {
                   className="text-amber-400/80 hover:text-amber-400 underline"
                 >
                   doi:10.21944/temis-uv-oper-v2
-                </a>
+                </a>{" "}
+                Clear-sky by default; the optional cloud-adjusted mode uses the
+                cloud-modified dose where available (Meteosat coverage: Europe,
+                Africa &amp; the Atlantic, ~69°S–69°N / 69°W–69°E) and clear-sky
+                elsewhere.
               </li>
               <li>
                 <span className="text-gray-300">Temperature:</span>{" "}

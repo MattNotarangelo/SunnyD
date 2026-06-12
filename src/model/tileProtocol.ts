@@ -67,7 +67,7 @@ export function registerProtocol() {
     const { month, z, x, y } = parseTileUrl(params.url);
     if (!currentParams) throw new Error("Model params not yet initialized");
 
-    const uvU16 = sampleTile("uv", month, z, x, y);
+    const uvU16 = sampleTile(currentParams.skyMode === "cloud" ? "uvcloud" : "uv", month, z, x, y);
     const tempU16 = currentParams.weatherAdjusted
       ? sampleTile("temp", month, z, x, y)
       : null;

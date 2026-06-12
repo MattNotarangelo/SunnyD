@@ -45,6 +45,8 @@ export interface AppState {
   coverage: number;
   coveragePreset: string | null;
   colorblindMode: boolean;
+  /** Use cloud-modified UV dose where available (Meteosat disk) instead of clear-sky. */
+  cloudAdjusted: boolean;
   /** Selected map point, shareable via URL (not persisted to localStorage). */
   selLat: number | null;
   selLon: number | null;
@@ -61,4 +63,5 @@ export interface ModelParams {
   tempEncodingScale: number;
   tempOffset: number;
   colorPalette: "default" | "colorblind";
+  skyMode: "clear" | "cloud";
 }

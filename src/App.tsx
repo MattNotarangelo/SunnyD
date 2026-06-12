@@ -6,8 +6,13 @@ import { SearchBox } from "./components/SearchBox";
 import { useAppState } from "./hooks/useAppState";
 import { useMethodology } from "./hooks/useMethodology";
 import { setColorPalette } from "./model/colorScale";
-import { loadMonth, monthReady, prefetchAllMonths } from "./model/gridData";
+import { loadMonth, monthReady, prefetchAllMonths, type Layer } from "./model/gridData";
 import type { ModelParams } from "./types";
+
+const layersFor = (cloudAdjusted: boolean): Layer[] => [
+  cloudAdjusted ? "uvcloud" : "uv",
+  "temp",
+];
 
 interface ClickState {
   lat: number;
@@ -43,7 +48,7 @@ export default function App() {
   };
   const [panelOpen, setPanelOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
-  const [ready, setReady] = useState(monthReady(state.month));
+  const [ready, setReady] = useState(() => monthReady(state.month, layersFor(state.cloudAdjusted)));
   const [loadError, setLoadError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
 
@@ -53,18 +58,19 @@ export default function App() {
     Promise.resolve().then(async () => {
       if (cancelled) return;
       setLoadError(null);
-      if (monthReady(state.month)) {
+      const layers = layersFor(state.cloudAdjusted);
+      if (monthReady(state.month, layers)) {
         setReady(true);
-        prefetchAllMonths();
+        prefetchAllMonths(layers);
         return;
       }
 
       setReady(false);
       try {
-        await loadMonth(state.month);
+        await loadMonth(state.month, layers);
         if (cancelled) return;
         setReady(true);
-        prefetchAllMonths();
+        prefetchAllMonths(layers);
       } catch (err) {
         if (!cancelled) {
           setLoadError(err instanceof Error ? err.message : "Failed to load data");
@@ -74,7 +80,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [state.month, retryCount]);
+  }, [state.month, state.cloudAdjusted, retryCount]);
 
   const modelParams: ModelParams = useMemo(
     () => {
@@ -91,8 +97,9 @@ export default function App() {
       tempEncodingScale: methodology.encoding.temp_encoding_scale,
       tempOffset: methodology.encoding.temp_offset,
       colorPalette: state.colorblindMode ? "colorblind" : "default",
+      skyMode: state.cloudAdjusted ? "cloud" : "clear",
     };},
-    [methodology, state.month, state.coverage, state.coveragePreset, state.skinType, state.colorblindMode],
+    [methodology, state.month, state.coverage, state.coveragePreset, state.skinType, state.colorblindMode, state.cloudAdjusted],
   );
 
   if (loadError) {
@@ -165,10 +172,12 @@ export default function App() {
         coverage={state.coverage}
         coveragePreset={state.coveragePreset}
         colorblindMode={state.colorblindMode}
+        cloudAdjusted={state.cloudAdjusted}
         setMonth={state.setMonth}
         setSkinType={state.setSkinType}
         setCoverage={state.setCoverage}
         setColorblindMode={state.setColorblindMode}
+        setCloudAdjusted={state.setCloudAdjusted}
         open={panelOpen}
         onClose={() => setPanelOpen(false)}
         onAbout={() => setAboutOpen(true)}

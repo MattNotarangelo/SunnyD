@@ -30,7 +30,9 @@ interface MonthGrid {
   data: Uint16Array;
 }
 
-type Layer = "uv" | "temp";
+export type Layer = "uv" | "temp" | "uvcloud";
+
+const DEFAULT_LAYERS: Layer[] = ["uv", "temp"];
 
 function parseHeader(buf: ArrayBuffer): GridHeader {
   const view = new DataView(buf, 0, HEADER_BYTES);
@@ -46,24 +48,27 @@ function parseHeader(buf: ArrayBuffer): GridHeader {
 
 // ── Progress tracking ────────────────────────────────────────────────
 
-const TOTAL_GRIDS = 24; // 12 months × 2 layers
-
 type LoadingCallback = (loaded: number, total: number) => void;
 let onProgress: LoadingCallback | null = null;
 
-/** Register a callback to observe grid loading progress (loaded out of 24). */
+/** Register a callback to observe grid loading progress. */
 export function setProgressCallback(cb: LoadingCallback | null): void {
   onProgress = cb;
 }
 
+/** Every layer:month grid ever requested — the denominator for progress. */
+const expected = new Set<string>();
+
 function notifyProgress(): void {
   if (!onProgress) return;
   let loaded = 0;
-  for (let m = 1; m <= 12; m++) {
-    if (cache.uv.has(m)) loaded++;
-    if (cache.temp.has(m)) loaded++;
+  for (const key of expected) {
+    const sep = key.indexOf(":");
+    const layer = key.slice(0, sep) as Layer;
+    const m = Number(key.slice(sep + 1));
+    if (cache[layer].has(m)) loaded++;
   }
-  onProgress(loaded, TOTAL_GRIDS);
+  onProgress(loaded, expected.size);
 }
 
 // ── Per-month cache ──────────────────────────────────────────────────
@@ -71,11 +76,13 @@ function notifyProgress(): void {
 const cache: Record<Layer, Map<number, MonthGrid>> = {
   uv: new Map(),
   temp: new Map(),
+  uvcloud: new Map(),
 };
 
 const inflight: Record<Layer, Map<number, Promise<MonthGrid>>> = {
   uv: new Map(),
   temp: new Map(),
+  uvcloud: new Map(),
 };
 
 // ── Retry logic ─────────────────────────────────────────────────────
@@ -149,6 +156,10 @@ async function fetchWithRetry(url: string, layer: Layer, month: number): Promise
 }
 
 async function fetchMonthGrid(layer: Layer, month: number): Promise<MonthGrid> {
+  if (!expected.has(`${layer}:${month}`)) {
+    expected.add(`${layer}:${month}`);
+    notifyProgress();
+  }
   const existing = cache[layer].get(month);
   if (existing) return existing;
 
@@ -171,38 +182,40 @@ async function fetchMonthGrid(layer: Layer, month: number): Promise<MonthGrid> {
 
 // ── Public loading API ───────────────────────────────────────────────
 
-/** Load UV + temp grids for a specific month. */
-export async function loadMonth(month: number): Promise<void> {
-  await Promise.all([fetchMonthGrid("uv", month), fetchMonthGrid("temp", month)]);
+/** Load the given grid layers for a specific month. */
+export async function loadMonth(month: number, layers: Layer[] = DEFAULT_LAYERS): Promise<void> {
+  await Promise.all(layers.map((layer) => fetchMonthGrid(layer, month)));
 }
 
-/** Whether both UV and temp grids are loaded for a given month. */
-export function monthReady(month: number): boolean {
-  return cache.uv.has(month) && cache.temp.has(month);
+/** Whether all given layers are loaded for a given month. */
+export function monthReady(month: number, layers: Layer[] = DEFAULT_LAYERS): boolean {
+  return layers.every((layer) => cache[layer].has(month));
 }
 
-/** Whether all 12 months are loaded for both layers. */
-export function allMonthsReady(): boolean {
+/** Whether all 12 months are loaded for the given layers. */
+export function allMonthsReady(layers: Layer[] = DEFAULT_LAYERS): boolean {
   for (let m = 1; m <= 12; m++) {
-    if (!cache.uv.has(m) || !cache.temp.has(m)) return false;
+    if (!monthReady(m, layers)) return false;
   }
   return true;
 }
 
 /** Background-load all remaining months (non-blocking). */
-export function prefetchAllMonths(): void {
+export function prefetchAllMonths(layers: Layer[] = DEFAULT_LAYERS): void {
   for (let m = 1; m <= 12; m++) {
-    fetchMonthGrid("uv", m);
-    fetchMonthGrid("temp", m);
+    for (const layer of layers) {
+      fetchMonthGrid(layer, m);
+    }
   }
 }
 
-/** Load all 12 months for both layers. Returns when complete. */
-export async function loadAllMonths(): Promise<void> {
+/** Load all 12 months for the given layers. Returns when complete. */
+export async function loadAllMonths(layers: Layer[] = DEFAULT_LAYERS): Promise<void> {
   const promises: Promise<MonthGrid>[] = [];
   for (let m = 1; m <= 12; m++) {
-    promises.push(fetchMonthGrid("uv", m));
-    promises.push(fetchMonthGrid("temp", m));
+    for (const layer of layers) {
+      promises.push(fetchMonthGrid(layer, m));
+    }
   }
   await Promise.all(promises);
 }

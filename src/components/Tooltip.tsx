@@ -28,12 +28,13 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
 
   const coverageForCalc = modelParams.weatherAdjusted ? 0.25 : modelParams.fCover;
   const skinType = modelParams.skinType;
+  const cloudAdjusted = modelParams.skyMode === "cloud";
 
   const r = useMemo(
-    () => getEstimate({ lat, lon, month, skinType, coverage: coverageForCalc }),
-    [lat, lon, month, skinType, coverageForCalc],
+    () => getEstimate({ lat, lon, month, skinType, coverage: coverageForCalc, cloudAdjusted }),
+    [lat, lon, month, skinType, coverageForCalc, cloudAdjusted],
   );
-  const requestKey = `${lat}:${lon}:${skinType}:${coverageForCalc}:${modelParams.weatherAdjusted}`;
+  const requestKey = `${lat}:${lon}:${skinType}:${coverageForCalc}:${modelParams.weatherAdjusted}:${cloudAdjusted}`;
 
   useEffect(() => {
     let cancelled = false;
@@ -44,6 +45,7 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
       skinType,
       coverage: coverageForCalc,
       weatherAdjusted: modelParams.weatherAdjusted,
+      cloudAdjusted,
     })
       .then((p) => {
         if (!cancelled) {
@@ -53,7 +55,7 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
       })
       .catch(() => { /* the profile is optional; silently degrade */ });
     return () => { cancelled = true; };
-  }, [lat, lon, skinType, coverageForCalc, modelParams.weatherAdjusted, requestKey]);
+  }, [lat, lon, skinType, coverageForCalc, modelParams.weatherAdjusted, cloudAdjusted, requestKey]);
 
   const serverTemp = r.intermediate.temperature ?? null;
   const displayCover =
@@ -95,7 +97,7 @@ export function Tooltip({ lat, lon, month, modelParams, onClose }: Props) {
 
       <div className="mt-3 border-t border-gray-700 pt-2 flex flex-col gap-1">
         <Row
-          label="Average UVB dose"
+          label={cloudAdjusted ? "Average UVB dose (cloud-adj.)" : "Average UVB dose"}
           value={r.intermediate.H_D_month.toFixed(1) + " J/m\u00b2/day"}
         />
         {r.intermediate.temperature !== null && (

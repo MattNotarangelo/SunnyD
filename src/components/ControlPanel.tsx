@@ -12,10 +12,12 @@ interface Props {
   coverage: number;
   coveragePreset: string | null;
   colorblindMode: boolean;
+  cloudAdjusted: boolean;
   setMonth: (m: number) => void;
   setSkinType: (s: number) => void;
   setCoverage: (cov: number, preset: string | null) => void;
   setColorblindMode: (cb: boolean) => void;
+  setCloudAdjusted: (ca: boolean) => void;
   open: boolean;
   onClose: () => void;
   onAbout: () => void;
@@ -28,10 +30,12 @@ export function ControlPanel({
   coverage,
   coveragePreset,
   colorblindMode,
+  cloudAdjusted,
   setMonth,
   setSkinType,
   setCoverage,
   setColorblindMode,
+  setCloudAdjusted,
   open,
   onClose,
   onAbout,
@@ -100,6 +104,25 @@ export function ControlPanel({
           >
             {colorblindMode ? "Colorblind Mode: On" : "Colorblind Mode: Off"}
           </button>
+
+          <div>
+            <button
+              onClick={() => setCloudAdjusted(!cloudAdjusted)}
+              className={`text-xs px-2 py-1.5 rounded w-full transition-colors ${
+                cloudAdjusted
+                  ? "bg-amber-500 text-gray-900 font-medium"
+                  : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+              }`}
+              title="Use cloud-modified UV dose where available"
+              aria-pressed={cloudAdjusted}
+            >
+              {cloudAdjusted ? "Cloud-Adjusted UV: On" : "Cloud-Adjusted UV: Off"}
+            </button>
+            <p className="text-[10px] text-gray-500 mt-1">
+              Accounts for average cloud cover over Europe, Africa &amp; the
+              Atlantic (Meteosat coverage). Clear-sky values elsewhere.
+            </p>
+          </div>
         </div>
 
         <div className="px-4 pb-4">

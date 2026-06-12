@@ -1,6 +1,6 @@
 import type { EstimateResponse } from "../types";
 import { METHODOLOGY } from "./methodology";
-import { samplePoint, allMonthsReady, loadAllMonths } from "../model/gridData";
+import { samplePoint, allMonthsReady, loadAllMonths, type Layer } from "../model/gridData";
 import { computeMinutes } from "../model/vitd";
 import { weatherExposure } from "../model/weather";
 
@@ -19,11 +19,13 @@ export function getEstimate(params: {
   month: number;
   skinType: number;
   coverage: number;
+  cloudAdjusted?: boolean;
 }): EstimateResponse {
-  const { lat, lon, month, skinType, coverage } = params;
+  const { lat, lon, month, skinType, coverage, cloudAdjusted } = params;
   const normLon = (((lon + 180) % 360) + 360) % 360 - 180;
 
-  const hDMonth = samplePoint("uv", month, lat, normLon, ENC_SCALE, 0);
+  const uvLayer = cloudAdjusted ? "uvcloud" : "uv";
+  const hDMonth = samplePoint(uvLayer, month, lat, normLon, ENC_SCALE, 0);
   const safeHD = isNaN(hDMonth) ? 0 : hDMonth;
 
   const temperature = samplePoint("temp", month, lat, normLon, TEMP_ENC_SCALE, TEMP_OFFSET);
@@ -91,15 +93,17 @@ function computeMonthlyMinutes(params: {
   skinType: number;
   coverage: number;
   weatherAdjusted?: boolean;
+  cloudAdjusted?: boolean;
 }): MonthMinutes[] {
-  const { lat, lon, skinType, coverage, weatherAdjusted } = params;
+  const { lat, lon, skinType, coverage, weatherAdjusted, cloudAdjusted } = params;
   const normLon = (((lon + 180) % 360) + 360) % 360 - 180;
   const kSkin = METHODOLOGY.fitzpatrick_table[String(skinType)] ?? 1;
   const kMinutes = METHODOLOGY.constants.K_minutes;
+  const uvLayer = cloudAdjusted ? "uvcloud" : "uv";
 
   const monthly: MonthMinutes[] = [];
   for (let m = 1; m <= 12; m++) {
-    let hD = samplePoint("uv", m, lat, normLon, ENC_SCALE, 0);
+    let hD = samplePoint(uvLayer, m, lat, normLon, ENC_SCALE, 0);
     if (isNaN(hD)) hD = 0;
 
     let fc = coverage;
@@ -132,9 +136,11 @@ export async function getMonthlyProfile(params: {
   skinType: number;
   coverage: number;
   weatherAdjusted?: boolean;
+  cloudAdjusted?: boolean;
 }): Promise<MonthlyProfileResponse> {
-  if (!allMonthsReady()) {
-    await loadAllMonths();
+  const layers: Layer[] = [params.cloudAdjusted ? "uvcloud" : "uv", "temp"];
+  if (!allMonthsReady(layers)) {
+    await loadAllMonths(layers);
   }
   const monthly = computeMonthlyMinutes(params);
   return { monthly, supplement: deriveSupplement(monthly) };

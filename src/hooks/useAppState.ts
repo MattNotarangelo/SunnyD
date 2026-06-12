@@ -9,6 +9,7 @@ const DEFAULTS: AppState = {
   coverage: 0.25,
   coveragePreset: "weather_adjusted",
   colorblindMode: false,
+  cloudAdjusted: false,
   selLat: null,
   selLon: null,
 };
@@ -61,6 +62,9 @@ function readURL(): Partial<AppState> {
   if (p.has("cb")) {
     result.colorblindMode = p.get("cb") === "1";
   }
+  if (p.has("sky")) {
+    result.cloudAdjusted = p.get("sky") === "cloud";
+  }
   if (p.has("lat") && p.has("lon")) {
     const lat = clampCoord(p.get("lat"), 90);
     const lon = clampCoord(p.get("lon"), 180);
@@ -89,6 +93,7 @@ function writeURL(state: AppState) {
   p.set("cov", String(state.coverage));
   if (state.coveragePreset) p.set("preset", state.coveragePreset);
   if (state.colorblindMode) p.set("cb", "1");
+  if (state.cloudAdjusted) p.set("sky", "cloud");
   if (state.selLat !== null && state.selLon !== null) {
     p.set("lat", String(state.selLat));
     p.set("lon", String(state.selLon));
@@ -106,6 +111,7 @@ function writeStorage(state: AppState) {
       coverage: state.coverage,
       coveragePreset: state.coveragePreset,
       colorblindMode: state.colorblindMode,
+      cloudAdjusted: state.cloudAdjusted,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
   } catch {
@@ -128,6 +134,7 @@ function initState(): AppState {
   const parsedPreset = parsePreset(merged.coveragePreset);
   const coveragePreset = parsedPreset === undefined ? DEFAULTS.coveragePreset : parsedPreset;
   const colorblindMode = typeof merged.colorblindMode === "boolean" ? merged.colorblindMode : DEFAULTS.colorblindMode;
+  const cloudAdjusted = typeof merged.cloudAdjusted === "boolean" ? merged.cloudAdjusted : DEFAULTS.cloudAdjusted;
   // The selected point only ever comes from the URL
   const selLat = clampCoord(url.selLat, 90);
   const selLon = clampCoord(url.selLon, 180);
@@ -138,6 +145,7 @@ function initState(): AppState {
     coverage,
     coveragePreset,
     colorblindMode,
+    cloudAdjusted,
     selLat: hasPoint ? selLat : null,
     selLon: hasPoint ? selLon : null,
   };
@@ -161,6 +169,7 @@ export function useAppState() {
     setCoverage: (coverage: number, coveragePreset: string | null) =>
       update({ coverage, coveragePreset }),
     setColorblindMode: (colorblindMode: boolean) => update({ colorblindMode }),
+    setCloudAdjusted: (cloudAdjusted: boolean) => update({ cloudAdjusted }),
     setSelected: (selLat: number | null, selLon: number | null) =>
       update({ selLat, selLon }),
   };
