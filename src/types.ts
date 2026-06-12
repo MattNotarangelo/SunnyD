@@ -45,6 +45,9 @@ export interface AppState {
   coverage: number;
   coveragePreset: string | null;
   colorblindMode: boolean;
+  /** Selected map point, shareable via URL (not persisted to localStorage). */
+  selLat: number | null;
+  selLon: number | null;
 }
 
 export interface ModelParams {

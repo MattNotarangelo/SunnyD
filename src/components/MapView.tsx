@@ -33,6 +33,7 @@ export function MapView({ month, modelParams, onMapClick, focus }: Props) {
   const monthRef = useRef(month);
   const paramsRef = useRef(modelParams);
   const onMapClickRef = useRef(onMapClick);
+  const focusRef = useRef<FocusTarget | null>(focus ?? null);
 
   useEffect(() => {
     monthRef.current = month;
@@ -82,8 +83,9 @@ export function MapView({ month, modelParams, onMapClick, focus }: Props) {
     });
   }, []);
 
-  // Fly to a requested target (e.g. a search result)
+  // Fly to a requested target (e.g. a search result or URL-shared point)
   useEffect(() => {
+    focusRef.current = focus ?? null;
     const map = mapRef.current;
     if (!map || !focus) return;
     map.flyTo({ center: [focus.lon, focus.lat], zoom: focus.zoom });
@@ -125,6 +127,7 @@ export function MapView({ month, modelParams, onMapClick, focus }: Props) {
       center: [0, 20],
       zoom: 2,
       maxZoom: 6,
+      hash: "map",
     });
 
     // No compass — the map is never rotated, and the dial reads as a spinner
@@ -145,6 +148,9 @@ export function MapView({ month, modelParams, onMapClick, focus }: Props) {
       mapRef.current = map;
       setModelParams(paramsRef.current);
       updateTileSource();
+      // Apply a focus requested before the map finished loading
+      const f = focusRef.current;
+      if (f) map.jumpTo({ center: [f.lon, f.lat], zoom: f.zoom });
     });
 
     map.on("click", (e) => {

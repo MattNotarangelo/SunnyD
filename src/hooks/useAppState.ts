@@ -9,6 +9,8 @@ const DEFAULTS: AppState = {
   coverage: 0.25,
   coveragePreset: "weather_adjusted",
   colorblindMode: false,
+  selLat: null,
+  selLon: null,
 };
 
 function clampInt(value: unknown, min: number, max: number): number | null {
@@ -22,6 +24,13 @@ function clampFraction(value: unknown): number | null {
   const n = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(n)) return null;
   return Math.max(0, Math.min(1, n));
+}
+
+function clampCoord(value: unknown, limit: number): number | null {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return null;
+  if (n < -limit || n > limit) return null;
+  return n;
 }
 
 function parsePreset(value: unknown): string | null | undefined {
@@ -52,6 +61,14 @@ function readURL(): Partial<AppState> {
   if (p.has("cb")) {
     result.colorblindMode = p.get("cb") === "1";
   }
+  if (p.has("lat") && p.has("lon")) {
+    const lat = clampCoord(p.get("lat"), 90);
+    const lon = clampCoord(p.get("lon"), 180);
+    if (lat !== null && lon !== null) {
+      result.selLat = lat;
+      result.selLon = lon;
+    }
+  }
   return result;
 }
 
@@ -72,12 +89,25 @@ function writeURL(state: AppState) {
   p.set("cov", String(state.coverage));
   if (state.coveragePreset) p.set("preset", state.coveragePreset);
   if (state.colorblindMode) p.set("cb", "1");
-  window.history.replaceState(null, "", `?${p.toString()}`);
+  if (state.selLat !== null && state.selLon !== null) {
+    p.set("lat", String(state.selLat));
+    p.set("lon", String(state.selLon));
+  }
+  // Preserve the hash — the map viewport lives there (MapLibre hash option)
+  window.history.replaceState(null, "", `?${p.toString()}${window.location.hash}`);
 }
 
 function writeStorage(state: AppState) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    // The selected point is shareable URL state, not a stored preference
+    const prefs = {
+      month: state.month,
+      skinType: state.skinType,
+      coverage: state.coverage,
+      coveragePreset: state.coveragePreset,
+      colorblindMode: state.colorblindMode,
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
   } catch {
     /* ignore */
   }
@@ -98,7 +128,19 @@ function initState(): AppState {
   const parsedPreset = parsePreset(merged.coveragePreset);
   const coveragePreset = parsedPreset === undefined ? DEFAULTS.coveragePreset : parsedPreset;
   const colorblindMode = typeof merged.colorblindMode === "boolean" ? merged.colorblindMode : DEFAULTS.colorblindMode;
-  return { month, skinType, coverage, coveragePreset, colorblindMode };
+  // The selected point only ever comes from the URL
+  const selLat = clampCoord(url.selLat, 90);
+  const selLon = clampCoord(url.selLon, 180);
+  const hasPoint = selLat !== null && selLon !== null;
+  return {
+    month,
+    skinType,
+    coverage,
+    coveragePreset,
+    colorblindMode,
+    selLat: hasPoint ? selLat : null,
+    selLon: hasPoint ? selLon : null,
+  };
 }
 
 export function useAppState() {
@@ -119,5 +161,7 @@ export function useAppState() {
     setCoverage: (coverage: number, coveragePreset: string | null) =>
       update({ coverage, coveragePreset }),
     setColorblindMode: (colorblindMode: boolean) => update({ colorblindMode }),
+    setSelected: (selLat: number | null, selLon: number | null) =>
+      update({ selLat, selLon }),
   };
 }
