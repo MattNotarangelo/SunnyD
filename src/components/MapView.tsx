@@ -113,7 +113,8 @@ export function MapView({ month, modelParams, onMapClick }: Props) {
       maxZoom: 6,
     });
 
-    map.addControl(new maplibregl.NavigationControl(), "top-right");
+    // No compass — the map is never rotated, and the dial reads as a spinner
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
 
     const geolocate = new maplibregl.GeolocateControl({
       positionOptions: { enableHighAccuracy: false },
