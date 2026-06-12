@@ -25,8 +25,22 @@ const AboutModal = lazy(() =>
 export default function App() {
   const { methodology } = useMethodology();
   const state = useAppState();
-  const [click, setClick] = useState<ClickState | null>(null);
-  const [focus, setFocus] = useState<FocusTarget | null>(null);
+  const [click, setClickState] = useState<ClickState | null>(() =>
+    state.selLat !== null && state.selLon !== null
+      ? { lat: state.selLat, lon: state.selLon }
+      : null,
+  );
+  // Center on a URL-shared point unless the URL hash already pins the viewport
+  const [focus, setFocus] = useState<FocusTarget | null>(() =>
+    state.selLat !== null && state.selLon !== null && !window.location.hash.includes("map=")
+      ? { lat: state.selLat, lon: state.selLon, zoom: 4 }
+      : null,
+  );
+
+  const setClick = (info: ClickState | null) => {
+    setClickState(info);
+    state.setSelected(info?.lat ?? null, info?.lon ?? null);
+  };
   const [panelOpen, setPanelOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [ready, setReady] = useState(monthReady(state.month));
