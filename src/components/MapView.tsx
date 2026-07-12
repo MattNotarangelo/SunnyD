@@ -128,7 +128,13 @@ export function MapView({ month, modelParams, onMapClick, focus }: Props) {
       zoom: 2,
       maxZoom: 6,
       hash: "map",
+      // Rotation/tilt serve no purpose here — keep the map north-up and flat
+      dragRotate: false,
+      pitchWithRotate: false,
+      touchPitch: false,
     });
+    map.touchZoomRotate.disableRotation();
+    map.keyboard.disableRotation();
 
     // No compass — the map is never rotated, and the dial reads as a spinner
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
