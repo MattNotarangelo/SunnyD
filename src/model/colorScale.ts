@@ -1,13 +1,16 @@
 /**
  * Log-scale color mapping for minutes of sun exposure.
  *
- * Range: ~5 min (green) to 240 min (red).  >240 or Infinity -> dark.
+ * Range: ~5 min (green) to MAX_ACHIEVABLE_MINUTES (red). Beyond that, or
+ * Infinity -> dark ("not achievable").
  * Supports a default (green-to-red) and colorblind-safe (viridis-like) palette.
  */
 
+import { MAX_ACHIEVABLE_MINUTES } from "./thresholds";
+
 export type ColorPalette = "default" | "colorblind";
 
-const MAX_MINUTES = 240;
+const MAX_MINUTES = MAX_ACHIEVABLE_MINUTES;
 const LOG_MIN = Math.log10(5);
 const LOG_MAX = Math.log10(MAX_MINUTES);
 const LOG_RANGE = LOG_MAX - LOG_MIN;

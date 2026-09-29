@@ -12,9 +12,9 @@ export function ColorLegend({ colorblindMode }: Props) {
 
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-300 mb-1">
-        Sun exposure needed to reach recommended Vitamin D intake (1000 IU)
-      </label>
+      <p className="text-sm font-medium text-gray-300 mb-1 text-balance">
+        Midday sun for 1,000 IU of vitamin D
+      </p>
       <div className="flex items-stretch gap-2">
         <div
           className="w-4 rounded"
@@ -29,8 +29,8 @@ export function ColorLegend({ colorblindMode }: Props) {
         </div>
       </div>
       <div className="flex items-center gap-2 mt-1.5 text-xs text-gray-400">
-        <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: darkColor }} />
-        &gt;240 min / Insufficient UV
+        <span className="inline-block w-3 h-3 rounded ring-1 ring-inset ring-white/30" style={{ backgroundColor: darkColor }} />
+        Not achievable (would need over 4 h)
       </div>
     </div>
   );

@@ -1,0 +1,35 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "gray-on-color",
+        "value": "*",
+        "files": [
+          "src/components/ExposureSelector.tsx"
+        ],
+        "createdAt": "2026-09-29T22:06:15.375Z",
+        "reason": "model-verified: only gray-900 on amber-500 here, computed 8.27:1 WCAG in critique Assessment B; dark ink on light fill"
+      },
+      {
+        "rule": "gray-on-color",
+        "value": "*",
+        "files": [
+          "src/components/ControlPanel.tsx"
+        ],
+        "createdAt": "2026-09-29T22:06:15.395Z",
+        "reason": "model-verified: only gray-900 on amber-500 here, computed 8.27:1 WCAG in critique Assessment B; dark ink on light fill"
+      },
+      {
+        "rule": "gray-on-color",
+        "value": "*",
+        "files": [
+          "src/App.tsx"
+        ],
+        "createdAt": "2026-09-29T22:06:15.416Z",
+        "reason": "model-verified: only gray-900 on amber-500 here, computed 8.27:1 WCAG in critique Assessment B; dark ink on light fill"
+      }
+    ]
+  }
+}

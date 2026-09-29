@@ -45,6 +45,8 @@ export interface AppState {
   coverage: number;
   coveragePreset: string | null;
   colorblindMode: boolean;
+  /** True once this visitor has picked a skin type themselves (not a default or a shared link's). */
+  skinTypeChosen: boolean;
   /** Selected map point, shareable via URL (not persisted to localStorage). */
   selLat: number | null;
   selLon: number | null;

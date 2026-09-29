@@ -29,7 +29,6 @@ export const METHODOLOGY: MethodologyResponse = {
     temp_offset: 50,
   },
   disclaimer:
-    "This is an EDUCATIONAL MODEL. " +
-    "It is NOT medical advice. " +
-    "It does NOT diagnose vitamin D deficiency.",
+    "This is an educational model. " +
+    "It is not medical advice, and it does not diagnose vitamin D deficiency.",
 };

@@ -1,5 +1,5 @@
 import maplibregl from "maplibre-gl";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ModelParams } from "../types";
 import { registerProtocol, setModelParams } from "../model/tileProtocol";
 
@@ -24,9 +24,16 @@ interface Props {
   modelParams: ModelParams;
   onMapClick: (info: ClickInfo) => void;
   focus?: FocusTarget | null;
+  /** Selected point, shown with a marker. */
+  selected?: ClickInfo | null;
+  /** Pixels of map covered by a bottom sheet; the selected point is kept above it. */
+  bottomInset?: number;
 }
 
-export function MapView({ month, modelParams, onMapClick, focus }: Props) {
+/** Space reserved for the floating controls along the top edge on small screens. */
+const TOP_CHROME_PX = 120;
+
+export function MapView({ month, modelParams, onMapClick, focus, selected = null, bottomInset = 0 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const versionRef = useRef(0);
@@ -34,6 +41,9 @@ export function MapView({ month, modelParams, onMapClick, focus }: Props) {
   const paramsRef = useRef(modelParams);
   const onMapClickRef = useRef(onMapClick);
   const focusRef = useRef<FocusTarget | null>(focus ?? null);
+  const markerRef = useRef<maplibregl.Marker | null>(null);
+  const [mapReady, setMapReady] = useState(false);
+  const [keyboardFocus, setKeyboardFocus] = useState(false);
 
   useEffect(() => {
     monthRef.current = month;
@@ -90,6 +100,50 @@ export function MapView({ month, modelParams, onMapClick, focus }: Props) {
     if (!map || !focus) return;
     map.flyTo({ center: [focus.lon, focus.lat], zoom: focus.zoom });
   }, [focus]);
+
+  // Marker on the selected point
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    if (!selected) {
+      markerRef.current?.remove();
+      markerRef.current = null;
+      return;
+    }
+    if (!markerRef.current) {
+      const el = document.createElement("div");
+      el.className = "sunnyd-marker";
+      el.setAttribute("aria-hidden", "true");
+      markerRef.current = new maplibregl.Marker({ element: el });
+    }
+    markerRef.current.setLngLat([selected.lon, selected.lat]).addTo(map);
+  }, [selected, mapReady]);
+
+  // Keep the selected point visible above a bottom sheet (small screens)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady || !selected || bottomInset <= 0) return;
+
+    const reveal = () => {
+      const { y } = map.project([selected.lon, selected.lat]);
+      const h = map.getContainer().clientHeight;
+      if (y > h - bottomInset - 32 || y < TOP_CHROME_PX) {
+        map.easeTo({
+          center: [selected.lon, selected.lat],
+          // Centre the point in the band between the top controls and the sheet
+          offset: [0, (TOP_CHROME_PX - bottomInset) / 2],
+          duration: 400,
+        });
+      }
+    };
+
+    // Let a fly-to (search, shared link) land before checking
+    if (map.isMoving()) {
+      map.once("moveend", reveal);
+      return () => { map.off("moveend", reveal); };
+    }
+    reveal();
+  }, [selected, bottomInset, mapReady]);
 
   // Re-render tiles when month or model params change (debounced for fast slider dragging)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -152,6 +206,7 @@ export function MapView({ month, modelParams, onMapClick, focus }: Props) {
 
     map.on("load", () => {
       mapRef.current = map;
+      setMapReady(true);
       setModelParams(paramsRef.current);
       updateTileSource();
       // Apply a focus requested before the map finished loading
@@ -159,16 +214,45 @@ export function MapView({ month, modelParams, onMapClick, focus }: Props) {
       if (f) map.jumpTo({ center: [f.lon, f.lat], zoom: f.zoom });
     });
 
+    // Keyboard: arrows pan (MapLibre), Enter/Space checks the point under the crosshair
+    const canvas = map.getCanvas();
+    canvas.setAttribute("aria-label", "Map. Arrow keys pan, plus and minus zoom, Enter checks the centre point.");
+    const onKeyDown = (e: KeyboardEvent) => {
+      setKeyboardFocus(true);
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      const c = map.getCenter();
+      const lon = (((c.lng % 360) + 540) % 360) - 180;
+      onMapClickRef.current({ lat: c.lat, lon });
+    };
+    const onFocus = () => setKeyboardFocus(canvas.matches(":focus-visible"));
+    const onBlur = () => setKeyboardFocus(false);
+    canvas.addEventListener("keydown", onKeyDown);
+    canvas.addEventListener("focus", onFocus);
+    canvas.addEventListener("blur", onBlur);
+
     map.on("click", (e) => {
       const lon = (((e.lngLat.lng % 360) + 540) % 360) - 180;
       onMapClickRef.current({ lat: e.lngLat.lat, lon });
     });
 
     return () => {
+      canvas.removeEventListener("keydown", onKeyDown);
+      canvas.removeEventListener("focus", onFocus);
+      canvas.removeEventListener("blur", onBlur);
       mapRef.current = null;
+      markerRef.current = null;
+      setMapReady(false);
       map.remove();
     };
   }, [updateTileSource]);
 
-  return <div ref={containerRef} className="flex-1 h-full" />;
+  return (
+    <div className="relative flex-1 h-full">
+      <div ref={containerRef} className="h-full w-full" />
+      {keyboardFocus && (
+        <div className="sunnyd-crosshair" aria-hidden="true" />
+      )}
+    </div>
+  );
 }

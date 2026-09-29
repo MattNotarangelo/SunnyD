@@ -3,10 +3,10 @@ import { METHODOLOGY } from "./methodology";
 import { samplePoint, allMonthsReady, loadAllMonths } from "../model/gridData";
 import { computeMinutes } from "../model/vitd";
 import { weatherExposure } from "../model/weather";
+import { isAchievable, needsSupplement } from "../model/thresholds";
 
 const { scale: ENC_SCALE, temp_encoding_scale: TEMP_ENC_SCALE, temp_offset: TEMP_OFFSET } =
   METHODOLOGY.encoding;
-const SUPPLEMENT_THRESHOLD = 120;
 
 const MONTH_ABBR = [
   "Jan", "Feb", "Mar", "Apr", "May", "June",
@@ -117,9 +117,28 @@ function computeMonthlyMinutes(params: {
 
 export function deriveSupplement(monthly: MonthMinutes[]): SupplementResponse {
   const hardMonths = monthly
-    .filter((m) => m.minutes === null || m.minutes > SUPPLEMENT_THRESHOLD)
+    .filter((m) => needsSupplement(m.minutes))
     .map((m) => m.month);
   return { months: hardMonths, label: formatMonthRange(hardMonths) };
+}
+
+export interface SunnyMonthsSummary {
+  /** Months where sun alone is enough, e.g. "May–Aug" or "the whole year". */
+  label: string;
+  /** The month needing the least sun, and how long. */
+  best: { month: number; minutes: number };
+}
+
+/** The positive counterpart to the supplement advice; null when no month is enough. */
+export function describeSunnyMonths(monthly: MonthMinutes[]): SunnyMonthsSummary | null {
+  const enough = monthly.filter((m) => !needsSupplement(m.minutes));
+  const label = formatMonthRange(enough.map((m) => m.month));
+  if (!label) return null;
+  let best = enough[0];
+  for (const m of enough) {
+    if (isAchievable(m.minutes) && m.minutes < (best.minutes ?? Infinity)) best = m;
+  }
+  return { label, best: { month: best.month, minutes: best.minutes as number } };
 }
 
 /**

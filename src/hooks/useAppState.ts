@@ -9,6 +9,7 @@ const DEFAULTS: AppState = {
   coverage: 0.25,
   coveragePreset: "weather_adjusted",
   colorblindMode: false,
+  skinTypeChosen: false,
   selLat: null,
   selLon: null,
 };
@@ -106,6 +107,7 @@ function writeStorage(state: AppState) {
       coverage: state.coverage,
       coveragePreset: state.coveragePreset,
       colorblindMode: state.colorblindMode,
+      skinTypeChosen: state.skinTypeChosen,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
   } catch {
@@ -123,7 +125,14 @@ function initState(): AppState {
   const stored = readStorage();
   const merged = { ...DEFAULTS, ...stored, ...url };
   const month = clampInt(merged.month, 1, 12) ?? DEFAULTS.month;
-  const skinType = clampInt(merged.skinType, 1, 6) ?? DEFAULTS.skinType;
+  // Skin type describes the viewer, not the place: a shared link's `skin`
+  // only fills in when this visitor hasn't chosen one yet. Older saves have
+  // no flag, so a stored non-default type counts as chosen.
+  const storedSkin = clampInt(stored.skinType, 1, 6);
+  const skinTypeChosen =
+    stored.skinTypeChosen === true || (storedSkin !== null && storedSkin !== DEFAULTS.skinType);
+  const skinType =
+    (skinTypeChosen ? storedSkin : null) ?? clampInt(url.skinType, 1, 6) ?? storedSkin ?? DEFAULTS.skinType;
   const coverage = clampFraction(merged.coverage) ?? DEFAULTS.coverage;
   const parsedPreset = parsePreset(merged.coveragePreset);
   const coveragePreset = parsedPreset === undefined ? DEFAULTS.coveragePreset : parsedPreset;
@@ -138,6 +147,7 @@ function initState(): AppState {
     coverage,
     coveragePreset,
     colorblindMode,
+    skinTypeChosen,
     selLat: hasPoint ? selLat : null,
     selLon: hasPoint ? selLon : null,
   };
@@ -157,7 +167,7 @@ export function useAppState() {
   return {
     ...state,
     setMonth: (month: number) => update({ month }),
-    setSkinType: (skinType: number) => update({ skinType }),
+    setSkinType: (skinType: number) => update({ skinType, skinTypeChosen: true }),
     setCoverage: (coverage: number, coveragePreset: string | null) =>
       update({ coverage, coveragePreset }),
     setColorblindMode: (colorblindMode: boolean) => update({ colorblindMode }),

@@ -32,7 +32,7 @@ export function LoadingProgress() {
   const pct = total > 0 ? (loaded / total) * 100 : 0;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 pointer-events-none">
+    <div className="fixed top-0 left-0 right-0 z-50 pointer-events-none" role="progressbar" aria-label="Loading month data" aria-valuemin={0} aria-valuemax={total} aria-valuenow={loaded}>
       {/* Track */}
       <div className="h-1 bg-gray-800/60">
         {/* Fill */}
@@ -42,8 +42,9 @@ export function LoadingProgress() {
         />
       </div>
       {/* Label */}
-      <div className="flex justify-center mt-1">
-        <span className="text-[11px] text-gray-400 bg-gray-900/70 backdrop-blur px-2 py-0.5 rounded">
+      {/* Small screens: the bar alone; a label here would sit on the top controls */}
+      <div className="mt-1 hidden justify-center md:flex md:pl-80">
+        <span className="rounded bg-gray-900/90 px-2 py-0.5 text-xs text-gray-300">
           Loading month data... {loaded}/{total}
         </span>
       </div>

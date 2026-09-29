@@ -1,10 +1,64 @@
 @import "tailwindcss";
 @import "maplibre-gl/dist/maplibre-gl.css";
 
+@theme {
+  /* Display role: the answer figure. Loaded on demand by the tooltip. */
+  --font-display: "Bricolage Grotesque Variable", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* One focus ring for the whole app (keyboard focus only for buttons; always for text fields) */
+:focus-visible {
+  outline: 2px solid var(--color-amber-400);
+  outline-offset: 2px;
+}
+
 html,
 body,
 #root {
   height: 100%;
   margin: 0;
   padding: 0;
+}
+
+/* Selected point: a ring that reads on every colour of the heat layer */
+.sunnyd-marker {
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  border: 3px solid #fff;
+  background: rgb(17 24 39 / 0.35);
+  box-shadow: 0 0 0 1.5px rgb(17 24 39 / 0.85), 0 2px 6px rgb(0 0 0 / 0.4);
+  pointer-events: none;
+}
+
+/* Touch: pinch replaces the zoom buttons; geolocate grows to a 44px target */
+@media (pointer: coarse) {
+  .maplibregl-ctrl-group:has(.maplibregl-ctrl-zoom-in) {
+    display: none;
+  }
+  .maplibregl-ctrl-group button.maplibregl-ctrl-geolocate {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* Keyboard map focus: the point Enter will check */
+.sunnyd-crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  pointer-events: none;
+  background:
+    linear-gradient(#fff, #fff) center / 2px 100% no-repeat,
+    linear-gradient(#fff, #fff) center / 100% 2px no-repeat;
+  filter: drop-shadow(0 0 1.5px rgb(17 24 39 / 0.9));
+}
+
+/* Inset so the map's focus ring isn't clipped by the viewport edge */
+.maplibregl-canvas:focus-visible {
+  outline: 2px solid var(--color-amber-400);
+  outline-offset: -2px;
 }

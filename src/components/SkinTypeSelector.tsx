@@ -1,7 +1,4 @@
-const ROMAN = ["I", "II", "III", "IV", "V", "VI"];
-const SKIN_EMOJI = ["🧑🏻", "🧑🏻", "🧑🏼", "🧑🏽", "🧑🏾", "🧑🏿"];
-const STOPS = ROMAN.length;
-const THUMB_PX = 18;
+import { SKIN_TYPES, skinTypeInfo } from "../model/skinTypes";
 
 interface Props {
   skinType: number;
@@ -10,37 +7,54 @@ interface Props {
 }
 
 export function SkinTypeSelector({ skinType, fitzpatrick, onChange }: Props) {
-  const kSkin = fitzpatrick[String(skinType)] ?? 1;
+  const current = skinTypeInfo(skinType);
+  const multiplier = fitzpatrick[String(skinType)] ?? 1;
 
   return (
-    <div>
-      <label className="block text-sm font-medium text-gray-300 mb-1">
-        Skin Type: <span className="text-white font-semibold">{ROMAN[skinType - 1]}</span>
-        <span className="text-gray-400 text-xs ml-2">(k = {kSkin})</span>
-        <span className="ml-1 text-2xl">{SKIN_EMOJI[skinType - 1]}</span>
-      </label>
-      <input
-        type="range"
-        min={1}
-        max={6}
-        step={1}
-        value={skinType}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full accent-amber-400"
-      />
-      <div className="relative h-4 mt-0.5">
-        {ROMAN.map((r, i) => (
-          <span
-            key={r}
-            className="absolute text-[10px] text-gray-500 -translate-x-1/2"
-            style={{
-              left: `calc(${THUMB_PX / 2}px + (100% - ${THUMB_PX}px) * ${i / (STOPS - 1)})`,
-            }}
-          >
-            {r}
-          </span>
-        ))}
+    <fieldset id="skin-type" className="scroll-mt-4">
+      <legend className="text-sm font-medium text-gray-300 mb-2">Your skin type</legend>
+      <div className="grid grid-cols-6 gap-1" role="radiogroup" aria-describedby="skin-type-desc">
+        {SKIN_TYPES.map((s) => {
+          const selected = s.type === skinType;
+          return (
+            <label key={s.type} className="group relative cursor-pointer">
+              <input
+                type="radio"
+                name="skin-type"
+                value={s.type}
+                checked={selected}
+                onChange={() => onChange(s.type)}
+                className="peer sr-only"
+                aria-label={`Type ${s.numeral}: ${s.description}`}
+              />
+              <span
+                className={`flex h-11 flex-col items-center justify-center gap-1 rounded-md border transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-amber-400 ${
+                  selected
+                    ? "border-amber-400 bg-gray-800"
+                    : "border-transparent hover:border-gray-600 hover:bg-gray-800/60"
+                }`}
+              >
+                <span
+                  className="h-4 w-4 rounded-full ring-1 ring-white/25"
+                  style={{ backgroundColor: s.tone }}
+                  aria-hidden="true"
+                />
+                <span className={`text-[11px] leading-none ${selected ? "text-white font-semibold" : "text-gray-400"}`}>
+                  {s.numeral}
+                </span>
+              </span>
+            </label>
+          );
+        })}
       </div>
-    </div>
+      <p id="skin-type-desc" className="mt-2 text-sm text-gray-200">
+        {current.description}
+      </p>
+      <p className="mt-0.5 text-xs text-gray-400">
+        {skinType === 1
+          ? "Needs the least sun to make vitamin D."
+          : `Needs about ${multiplier}× as much sun as type I.`}
+      </p>
+    </fieldset>
   );
 }

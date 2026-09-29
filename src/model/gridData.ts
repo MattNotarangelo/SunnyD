@@ -54,6 +54,8 @@ let onProgress: LoadingCallback | null = null;
 /** Register a callback to observe grid loading progress (loaded out of 24). */
 export function setProgressCallback(cb: LoadingCallback | null): void {
   onProgress = cb;
+  // Report what's already loaded; grids may finish before a listener registers
+  notifyProgress();
 }
 
 function notifyProgress(): void {
