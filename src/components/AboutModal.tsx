@@ -1,26 +1,54 @@
+import { useEffect, useRef } from "react";
+
 interface Props {
   onClose: () => void;
   modelVersion: string;
 }
 
 export function AboutModal({ onClose, modelVersion }: Props) {
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    closeRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCloseRef.current();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      opener?.focus();
+    };
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="about-title"
+    >
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative bg-gray-900 border border-gray-700 rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 text-white">
         <button
+          ref={closeRef}
           onClick={onClose}
-          className="absolute top-3 right-3 text-gray-500 hover:text-white text-lg leading-none"
+          aria-label="Close"
+          className="absolute top-1 right-1 grid h-11 w-11 place-items-center text-xl leading-none text-gray-400 hover:text-white"
         >
           &times;
         </button>
 
-        <h2 className="text-xl font-bold text-amber-400 mb-1">SunnyD</h2>
+        <h2 id="about-title" className="text-xl font-bold text-amber-400 mb-1">SunnyD</h2>
         <p className="text-sm text-gray-400 mb-4">Global Vitamin D Sun Exposure Estimator</p>
 
         <div className="space-y-3 text-sm text-gray-300">
           <p>
-            Estimates how many minutes of midday sun are needed to synthesise a target daily vitamin D (specifically D3) synthesis, by
+            Estimates how many minutes of midday sun are needed to synthesise a daily target of vitamin D (specifically D3), by
             location, month, skin type, and exposed skin area.
           </p>
 
@@ -126,20 +154,20 @@ export function AboutModal({ onClose, modelVersion }: Props) {
           </div>
 
           <div className="border-t border-gray-700 pt-3">
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-400">
               This is an <strong className="text-gray-400">educational model</strong>. It is not medical advice. It does
               not diagnose vitamin D deficiency.
             </p>
           </div>
 
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-400">
             Questions? Feel free to contact me at{" "}
             <a href="mailto:matt.notarangelo1@gmail.com" className="text-amber-400/80 hover:text-amber-400 underline">
               matt.notarangelo1@gmail.com
             </a>
           </p>
 
-          <div className="flex items-center justify-between text-xs text-gray-500 pt-1">
+          <div className="flex items-center justify-between text-xs text-gray-400 pt-1">
             <span>Model v{modelVersion}</span>
             <a
               href="https://github.com/MattNotarangelo/SunnyD"

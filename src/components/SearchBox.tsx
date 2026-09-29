@@ -72,7 +72,7 @@ export function SearchBox({ onSelect }: Props) {
   };
 
   return (
-    <div className="fixed z-20 w-64 top-[4.2rem] left-3 md:top-3 md:left-[21.5rem]">
+    <div className="relative min-w-0 flex-1">
       <input
         type="search"
         value={query}
@@ -84,22 +84,28 @@ export function SearchBox({ onSelect }: Props) {
         aria-label="Search for a place"
         role="combobox"
         aria-expanded={open}
-        className="w-full bg-gray-900/80 backdrop-blur border border-gray-700 text-white text-sm rounded-lg px-3 py-2 shadow-lg placeholder-gray-500 focus:outline-none focus:border-amber-400"
+        aria-autocomplete="list"
+        aria-controls="search-results"
+        aria-activedescendant={open && results[highlighted] ? `search-option-${highlighted}` : undefined}
+        className="h-11 w-full rounded-lg border border-gray-700 bg-gray-900/95 px-3 text-base text-white shadow-lg placeholder-gray-400 focus:border-amber-400 md:h-10 md:text-sm"
       />
       {open && (
         <ul
           role="listbox"
-          className="mt-1 bg-gray-900/95 backdrop-blur border border-gray-700 rounded-lg shadow-xl overflow-hidden"
+          id="search-results"
+          aria-label="Places"
+          className="absolute inset-x-0 mt-1 overflow-hidden rounded-lg border border-gray-700 bg-gray-900 shadow-xl"
         >
           {error && (
-            <li className="px-3 py-2 text-xs text-rose-400">Search failed — try again</li>
+            <li className="px-3 py-2 text-sm text-rose-400 md:text-xs">Search failed — try again</li>
           )}
           {!error && results.length === 0 && (
-            <li className="px-3 py-2 text-xs text-gray-500">No results</li>
+            <li className="px-3 py-2 text-sm text-gray-400 md:text-xs">No results</li>
           )}
           {results.map((r, i) => (
             <li
               key={`${r.lat}:${r.lon}:${r.label}`}
+              id={`search-option-${i}`}
               role="option"
               aria-selected={i === highlighted}
               onMouseDown={(e) => {
@@ -107,7 +113,7 @@ export function SearchBox({ onSelect }: Props) {
                 select(r);
               }}
               onMouseEnter={() => setHighlighted(i)}
-              className={`px-3 py-2 text-xs cursor-pointer truncate ${
+              className={`cursor-pointer truncate px-3 py-2 text-sm pointer-coarse:py-3 md:text-xs ${
                 i === highlighted ? "bg-gray-700 text-white" : "text-gray-300"
               }`}
             >

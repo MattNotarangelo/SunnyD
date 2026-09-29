@@ -6,14 +6,15 @@ interface Props {
 
 export function Disclaimer({ text, modelVersion, onAbout }: Props) {
   return (
-    <div className="text-xs text-gray-500 border-t border-gray-700 pt-3">
+    <div className="text-xs text-gray-400 border-t border-gray-700 pt-3">
       <p>{text}</p>
-      <div className="mt-1 flex items-center justify-between text-gray-600">
+      <div className="mt-1 flex items-center justify-between text-gray-400">
         <span>Model v{modelVersion}</span>
         {onAbout && (
           <button
             onClick={onAbout}
-            className="text-gray-500 hover:text-amber-400 transition-colors p-0.5"
+            className="-m-3.5 p-3.5 text-gray-400 hover:text-amber-400 transition-colors"
+            aria-label="About SunnyD"
             title="About"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">

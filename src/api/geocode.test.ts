@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatPhotonFeature, parsePhotonResponse } from './geocode.ts';
+import { formatPhotonFeature, formatReverseFeature, parsePhotonResponse } from './geocode.ts';
 
 function feature(
   coordinates: unknown,
@@ -74,5 +74,31 @@ describe('parsePhotonResponse', () => {
     );
 
     expect(parsePhotonResponse({ features: many })).toHaveLength(5);
+  });
+});
+
+describe('formatReverseFeature', () => {
+  it('names the city, region and country rather than the street', () => {
+    const label = formatReverseFeature({
+      properties: { name: 'Baker Street', type: 'street', city: 'London', state: 'England', country: 'United Kingdom' },
+    });
+
+    expect(label).toBe('London, England, United Kingdom');
+  });
+
+  it('uses a settlement feature\'s own name', () => {
+    const label = formatReverseFeature({ properties: { name: 'Tromsø', type: 'city', country: 'Norway' } });
+
+    expect(label).toBe('Tromsø, Norway');
+  });
+
+  it('falls back to the region when there is no settlement', () => {
+    const label = formatReverseFeature({ properties: { name: 'Some Road', type: 'street', state: 'Nunavut', country: 'Canada' } });
+
+    expect(label).toBe('Nunavut, Canada');
+  });
+
+  it('returns null for an empty feature', () => {
+    expect(formatReverseFeature({ properties: {} })).toBeNull();
   });
 });

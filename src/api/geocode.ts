@@ -67,3 +67,55 @@ export async function searchPlaces(
   }
   return parsePhotonResponse(await res.json());
 }
+
+const PHOTON_REVERSE_ENDPOINT = "https://photon.komoot.io/reverse";
+/** Settlement-level feature types whose own name is the place name. */
+const SETTLEMENT_TYPES = new Set(["city", "town", "village", "hamlet", "locality", "district"]);
+
+interface PhotonReverseProperties {
+  name?: unknown;
+  type?: unknown;
+  city?: unknown;
+  county?: unknown;
+  state?: unknown;
+  country?: unknown;
+}
+
+/**
+ * Human place name for a reverse-geocoded point: the town or city, then the
+ * region and country. Streets and buildings are skipped; a map click means
+ * "around here", not a street address.
+ */
+export function formatReverseFeature(feature: { properties?: PhotonReverseProperties }): string | null {
+  const props = feature.properties ?? {};
+  const type = asString(props.type);
+  const settlement =
+    asString(props.city) ?? (type && SETTLEMENT_TYPES.has(type) ? asString(props.name) : null) ?? asString(props.county);
+  const parts: string[] = [];
+  for (const value of [settlement, asString(props.state), asString(props.country)]) {
+    if (value && !parts.includes(value)) parts.push(value);
+  }
+  return parts.length ? parts.join(", ") : null;
+}
+
+const reverseCache = new Map<string, string | null>();
+
+/** Place name near a point, or null (open sea, no data, or lookup failed). */
+export async function reverseGeocode(
+  lat: number,
+  lon: number,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  // ~1 km grid: nearby clicks share a name and a request
+  const key = `${lat.toFixed(2)},${lon.toFixed(2)}`;
+  if (reverseCache.has(key)) return reverseCache.get(key)!;
+
+  const url = `${PHOTON_REVERSE_ENDPOINT}?lat=${lat}&lon=${lon}`;
+  const res = await fetch(url, { signal });
+  if (!res.ok) throw new Error(`Reverse geocoding failed (${res.status})`);
+  const data = (await res.json()) as { features?: unknown };
+  const first = Array.isArray(data.features) ? (data.features[0] as { properties?: PhotonReverseProperties }) : undefined;
+  const label = first ? formatReverseFeature(first) : null;
+  reverseCache.set(key, label);
+  return label;
+}

@@ -1,5 +1,5 @@
-import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { MonthChart } from './MonthChart.tsx';
 import { minutesToColor } from '../model/colorScale.ts';
 import type { MonthMinutes } from '../api/estimate.ts';
@@ -60,6 +60,43 @@ describe('MonthChart', () => {
     render(<MonthChart monthly={profile(minutes)} currentMonth={6} />);
 
     expect(screen.getByTestId('month-bar-1').title).toBe('January: 30 min');
-    expect(screen.getByTestId('month-bar-2').title).toBe('February: not possible');
+    expect(screen.getByTestId('month-bar-2').title).toBe('February: not achievable');
+  });
+
+  it('calls months beyond the achievable limit not achievable, matching the map', () => {
+    const minutes: Array<number | null> = Array(12).fill(30);
+    minutes[0] = 150; // over the supplement line, still achievable
+    minutes[1] = 300; // beyond the 4-hour window
+
+    render(<MonthChart monthly={profile(minutes)} currentMonth={6} />);
+
+    expect(screen.getByTestId('month-bar-1').title).toBe('January: 150 min (over 120)');
+    expect(screen.getByTestId('month-bar-2').title).toBe('February: not achievable');
+    const [dr, dg, db] = minutesToColor(null, true, false);
+    const bar = screen.getByTestId('month-bar-2').firstElementChild as HTMLElement;
+    expect(bar.style.backgroundColor).toBe(`rgb(${dr}, ${dg}, ${db})`);
+  });
+});
+
+describe('MonthChart interaction', () => {
+  it('selects a month when its bar is tapped', () => {
+    const onSelect = vi.fn();
+    render(<MonthChart monthly={profile(Array(12).fill(30))} currentMonth={6} onSelectMonth={onSelect} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'March: 30 min' }));
+
+    expect(onSelect).toHaveBeenCalledWith(3);
+  });
+
+  it('hatches not-achievable bars so they read without colour', () => {
+    const minutes: Array<number | null> = Array(12).fill(30);
+    minutes[0] = null;
+
+    render(<MonthChart monthly={profile(minutes)} currentMonth={6} />);
+
+    const hard = screen.getByTestId('month-bar-1').firstElementChild as HTMLElement;
+    const easy = screen.getByTestId('month-bar-2').firstElementChild as HTMLElement;
+    expect(hard.style.backgroundImage).toContain('repeating-linear-gradient');
+    expect(easy.style.backgroundImage).toBe('');
   });
 });

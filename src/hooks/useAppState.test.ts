@@ -74,3 +74,73 @@ describe('useAppState selected point', () => {
     expect(stored.selLon).toBeUndefined();
   });
 });
+
+describe('useAppState skin type from shared links', () => {
+  it('keeps the visitor\'s saved skin type over the link\'s', () => {
+    localStorage.setItem('sunnyd_state', JSON.stringify({ skinType: 6 }));
+    window.history.replaceState(null, '', '/?skin=2&month=3&lat=59.9&lon=10.7');
+
+    const { result } = renderHook(() => useAppState());
+
+    expect(result.current.skinType).toBe(6);
+    // The rest of the shared context still applies
+    expect(result.current.month).toBe(3);
+    expect(result.current.selLat).toBe(59.9);
+  });
+
+  it('uses the link\'s skin type for a first-time visitor', () => {
+    window.history.replaceState(null, '', '/?skin=5');
+
+    const { result } = renderHook(() => useAppState());
+
+    expect(result.current.skinType).toBe(5);
+  });
+
+  it('does not overwrite the saved skin type when other settings change', () => {
+    localStorage.setItem('sunnyd_state', JSON.stringify({ skinType: 6 }));
+    window.history.replaceState(null, '', '/?skin=2');
+
+    const { result } = renderHook(() => useAppState());
+    act(() => result.current.setMonth(8));
+
+    expect(JSON.parse(localStorage.getItem('sunnyd_state')!).skinType).toBe(6);
+  });
+});
+
+describe('useAppState skinTypeChosen', () => {
+  it('starts unchosen for a new visitor, even with a shared skin type', () => {
+    window.history.replaceState(null, '', '/?skin=4');
+
+    const { result } = renderHook(() => useAppState());
+
+    expect(result.current.skinType).toBe(4);
+    expect(result.current.skinTypeChosen).toBe(false);
+  });
+
+  it('marks the skin type chosen and persists it when the visitor picks one', () => {
+    const { result } = renderHook(() => useAppState());
+    act(() => result.current.setSkinType(2));
+
+    expect(result.current.skinTypeChosen).toBe(true);
+    expect(JSON.parse(localStorage.getItem('sunnyd_state')!)).toMatchObject({ skinType: 2, skinTypeChosen: true });
+  });
+
+  it('keeps a deliberately chosen default type over a shared link', () => {
+    localStorage.setItem('sunnyd_state', JSON.stringify({ skinType: 2, skinTypeChosen: true }));
+    window.history.replaceState(null, '', '/?skin=5');
+
+    const { result } = renderHook(() => useAppState());
+
+    expect(result.current.skinType).toBe(2);
+  });
+
+  it('lets a shared link override an auto-saved default from older versions', () => {
+    localStorage.setItem('sunnyd_state', JSON.stringify({ skinType: 2 }));
+    window.history.replaceState(null, '', '/?skin=5');
+
+    const { result } = renderHook(() => useAppState());
+
+    expect(result.current.skinType).toBe(5);
+    expect(result.current.skinTypeChosen).toBe(false);
+  });
+});
