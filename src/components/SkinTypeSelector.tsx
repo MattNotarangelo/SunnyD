@@ -12,7 +12,12 @@ export function SkinTypeSelector({ skinType, fitzpatrick, onChange }: Props) {
 
   return (
     <fieldset id="skin-type" className="scroll-mt-4">
-      <legend className="text-sm font-medium text-gray-300 mb-2">Your skin type</legend>
+      <legend className="mb-2 flex items-center gap-1.5 text-sm font-medium text-gray-300">
+        Your skin type
+        <span className="text-2xl leading-none" aria-hidden="true">
+          {current.emoji}
+        </span>
+      </legend>
       <div className="grid grid-cols-6 gap-1" role="radiogroup" aria-describedby="skin-type-desc">
         {SKIN_TYPES.map((s) => {
           const selected = s.type === skinType;
